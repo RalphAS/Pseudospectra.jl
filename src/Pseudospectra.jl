@@ -526,7 +526,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
             chnl = Channel(xeigsproducer)
             xeigs_result = take!(chnl)
         else
-            chnl = Task(()->xeigsproducer(nothing))
+            chnl = Task(()->xeigsproducer(true))
             xeigs_result = consume(chnl)
         end
         while xeigs_result[1] ∉ [:finale,:failure]
