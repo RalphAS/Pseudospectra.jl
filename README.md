@@ -15,14 +15,14 @@ of perturbations `A+E` where `norm(E) < ϵ`.
 Among other things, pseudospectra:
 * elucidate transient behavior hidden to eigen-analysis, and
 * indicate the utility of eigenvalues extracted via iterative methods like `eigs`.
-See [http://www.cs.ox.ac.uk/pseudospectra/intro.html|the Pseudospectra gateway]
+See [the Pseudospectra gateway](http://www.cs.ox.ac.uk/pseudospectra/intro.html)
 for details, references, and more.
 
 ## Package context
 Pseudospectra (along with the QML-based GUI, in the PseudospectraView package)
 is essentially a translation of the acclaimed MATLAB-based EigTool
-([http://www.comlab.ox.ac.uk/pseudospectra/eigtool|homepage here]),
-code now hosted [https://github.com/eigtool/eigtool|on GitHub].
+([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool)),
+code now hosted [on GitHub](https://github.com/eigtool/eigtool).
 
 No endorsement or promotion of Pseudospectra.jl by the authors of EigTool
 is implied.
