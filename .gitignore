@@ -1,0 +1,9 @@
+*~
+docs/build
+docs/site
+examples/.ipynb_checkpoints/
+examples/data/
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+READMEnot.md
