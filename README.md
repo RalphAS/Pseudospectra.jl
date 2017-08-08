@@ -1,6 +1,7 @@
 # Pseudospectra
 
 [![Build Status](https://travis-ci.org/RalphAS/Pseudospectra.jl.svg?branch=master)](https://travis-ci.org/RalphAS/Pseudospectra.jl)
+[![Coverage Status](http://codecov.io/github/RalphAS/Pseudospectra.jl/coverage.svg?branch=master)](http://codecov.io/github/RalphAS/Pseudospectra.jl?branch=master)
 
 # Introduction
 Pseudospectra is a Julia package for computing pseudospectra of
@@ -9,18 +10,20 @@ non-symmetric matrices, and plotting them along with eigenvalues
 also provided.
 
 ## Mathematical background
-The ϵ-pseudospectrum of a matrix `A`
-is the locus (in the complex plane) of eigenvalues
-of perturbations `A+E` where `norm(E) < ϵ`.
+The ϵ-pseudospectrum of a matrix `A` is the locus (in the complex plane) of
+eigenvalues of perturbations `A+E` where `norm(E) < ϵ`. Specifically,
+this package works with the unweighted 2-norm.
+
 Among other things, pseudospectra:
 * elucidate transient behavior hidden to eigen-analysis, and
 * indicate the utility of eigenvalues extracted via iterative methods like `eigs`.
+
 See [the Pseudospectra gateway](http://www.cs.ox.ac.uk/pseudospectra/intro.html)
 for details, references, and more.
 
 ## Package context
-Pseudospectra (along with the QML-based GUI, in the PseudospectraView package)
-is essentially a translation of the acclaimed MATLAB-based EigTool
+Pseudospectra (along with the QML-based GUI, in the forthcoming PseudospectraView
+package) is essentially a translation of the acclaimed MATLAB-based EigTool
 ([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool)),
 code now hosted [on GitHub](https://github.com/eigtool/eigtool).
 
