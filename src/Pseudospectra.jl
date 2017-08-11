@@ -23,7 +23,7 @@ using Compat
 
 export new_matrix, driver!
 export psa_compute, pspa_2way, pspr_2way
-export modeplot, mtxexpsplot, mtxpowersplot, isheadless
+export modeplot, mtxexpsplot, mtxpowersplot, isheadless, iscomputed
 export PSAStruct, ArpackOptions, Portrait, GUIState
 
 # Not exported, but may be used by plotting packages:
@@ -640,6 +640,10 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
         # TODO: reset GUI
     end
     nothing
+end
+
+function iscomputed(ps_data::PSAStruct, idx=ps_data.zoom_pos)
+    ps_data.zoom_list[idx].computed
 end
 
 """
