@@ -322,7 +322,7 @@ function new_matrix(A::AbstractMatrix,
         end
         if !haveschur && isempty(eigA)
             try
-                eigA = eigfact(A)[:values]
+                eigA = eigvals(A)
             catch JE
                 isa(JE,MethodError) || rethrow(JE)
                 warn("Failed to compute eigenvalues; proceeding without.")
@@ -417,6 +417,64 @@ function new_matrix(A::AbstractMatrix,
     return ps_data
 end
 
+"""
+    new_matrix(A, opts::Dict{Symbol,Any}=()) -> ps_data
+
+process a linear operator object into the auxiliary data structure used by Pseudospectra.
+
+There must be methods with `A` for `eltype`, `size`, and `A_mul_B!`.
+"""
+function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
+    m,n=size(A)
+    (m == n) || throw(ArgumentError(
+        "Only square linear operators are supported."))
+    Aisreal = get(opts,:real_matrix, !(eltype(A) <: Complex))
+
+    verbosity = get(opts,:verbosity,1)
+    direct = false
+    eigA = get(opts,:eigA,Vector{complex(eltype(A))}(0))
+
+    input_unitary_mtx = get(opts,:unitary_mtx,I)
+    npts = get(opts,:npts,setgridsize(n,24,80,!Aisreal))
+    proj_lev = get(opts,:proj_lev,Inf)
+
+    ps_dict = Dict{Symbol,Any}(:Aisreal => Aisreal,
+                                   :isHessenberg => false,
+                                   :sparse_direct => false,
+                                   :projection_on => false,
+                                   :proj_lev => Inf,
+                                   :ews => eigA)
+    ps_data = PSAStruct(A, input_unitary_mtx, A, input_unitary_mtx, I,
+                        ps_dict)
+    if !haskey(opts,:arpack_opts)
+        warn("setting default ARPACK options")
+        ps_dict[:arpack_opts] = ArpackOptions{eltype(A)}()
+    else
+        isa(opts[:arpack_opts],ArpackOptions) || throw(
+            ArgumentError("type of opts[:arpack_options] must "
+                          * "be ArpackOptions"))
+        ps_dict[:arpack_opts] = opts[:arpack_opts]
+    end
+    lev = get(opts,:levels,zeros(0))
+    zoom = Portrait(zeros(0),zeros(0),zeros(0,0),
+                    npts, get(opts,:ax,zeros(0)),
+                    LevelDesc(lev),
+                    isempty(lev), proj_lev,
+                    size(ps_data.matrix), false,
+                    get(opts,:scale_equal,false))
+    push!(ps_data.zoom_list,zoom)
+
+    ps_dict[:orig_ews] = eigA
+    ps_dict[:ew_estimates] = false
+    ps_data.zoom_pos = 1
+    # save for use when returning to initial plot
+    ps_dict[:init_opts] = deepcopy(zoom)
+    ps_dict[:init_direct] = direct
+    ps_dict[:direct] = direct
+    ps_dict[:verbosity] = verbosity
+
+    return ps_data
+end
 
 """
     driver!(ps_data, opts, gs)

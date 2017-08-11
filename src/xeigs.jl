@@ -19,45 +19,36 @@ import Base.LinAlg.ARPACK: naupd, saupd, eupd_wrapper
 """
     xeigs(A, B, channel=nothing; nev=6, ncv=max(20,2*nev+1), which=:LM,
           tol=0.0, maxiter=300, sigma=nothing, ritzvec=true, v0=zeros((0,)),
-          wantH=true, options=nothing, nd=0)
+          wantH=true, options=nothing)
 
 Compute (generalized) eigenpairs of `A x=λ B x` and projections.
 
 Modified version of `eigs()` (q.v.) which optionally
 1. provides the projection matrices,
 2. provides intermediate states (typically for plotting), and
-3. works with a functional form of `A` (not thoroughly tested).
 
-For option (2), pass a `Channel` argument; in this case `xeigs` is
-implemented as a producer which fills `channel`.
+For option (2), caller must provide a `Channel` argument; in this case `xeigs`
+is implemented as a producer which fills `channel`.
 When finished, it `put`s `(:finale, d,[v,],nconv,niter,nmult,resid[,H,V])` to
 `channel`.
 
-For option (3), `A(y,x)` must be a function which applies a linear
-operation to `x` and stores the result in `y`, both vectors of length `nd`
-(which must be provided as a keyword argument). Only some variants are
-implemented for this case.
+The type of `A` must provide methods for `A_mul_B!`, `issymmetric`,
+`eltype` and `size`. Some variants are not
+implemented for the case where `A` is not a factorable matrix.
 """
-function xeigs(A, B, chnl = nothing; nd = 0,
+function xeigs(A, B, chnl = nothing;
                nev::Integer=6, ncv::Integer=max(20,2*nev+1), which=:LM,
                tol=0.0, maxiter::Integer=300, sigma=nothing,
                v0::Vector=zeros((0,)), # zeros(eltype(A),(0,)),
                ritzvec::Bool=true, wantH::Bool=true,
                options = Dict{Symbol,Any}())
 
-    if isa(A,AbstractMatrix)
-        n = checksquare(A)
+    n = checksquare(A)
 
-        T = eltype(A)
-        iscmplx = T <: Complex
-        sym = issymmetric(A) && issymmetric(B) && !iscmplx
-    else
-        (nd == 0) && throw(ArgumentError("caller must provide nd for function version"))
-        n = nd
-        T = eltype(v0)
-        iscmplx = true
-        sym = false
-    end
+    T = eltype(A)
+    iscmplx = T <: Complex
+    sym = issymmetric(A) && issymmetric(B) && !iscmplx
+
     isgeneral = B !== I
     nevmax=sym ? n-1 : n-2
     if nevmax <= 0
@@ -138,14 +129,12 @@ function xeigs(A, B, chnl = nothing; nd = 0,
     end
 
     # Refer to ex-*.doc files in ARPACK/DOCUMENTS for calling sequence
-    if isa(A,Function)
-        matvecA! = A
-        if isshift
-            throw(ArgumentError("functional version only implemented for regular mode"))
-        end
-    else
-        matvecA!(y, x) = A_mul_B!(y, A, x)
+
+    if isshift && !methodexists(factorize,(typeof(A),))
+        throw(ArgumentError("shift mode only implemented for factorable matrices"))
     end
+
+    matvecA!(y, x) = A_mul_B!(y, A, x)
 
     if !isgeneral           # Standard problem
         matvecB = x -> x
