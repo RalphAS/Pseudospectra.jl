@@ -2,7 +2,7 @@ using Pseudospectra, Base.Test
 
 tests = ["basic","arpack1","medcplx","medrect","smrect","spdirect",
           "projection_and_transient","radius_abscissa","negproj","eigsnoconv",
-          "numrange", "linmap"
+          "numrange", "linmap", "big"
           ]
 
 if length(ARGS) > 0

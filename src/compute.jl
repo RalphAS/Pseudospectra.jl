@@ -136,7 +136,7 @@ function psa_compute(Targ, eigA, opts, S=I; myprintln=println, mywarn=warn,
         np = 0
         ew_range = ax
         # iteratively extend range until 20 (or all) ews are included
-        if m > psathresholds.minnev
+        if (m > psathresholds.minnev) && !isempty(eigA)
             local selection
             while np < psathresholds.minnev
                 if proj_lev >= 0
@@ -179,7 +179,8 @@ function psa_compute(Targ, eigA, opts, S=I; myprintln=println, mywarn=warn,
             # restrict eigenvalues and matrix
             eigAproj = eigA[selection]
 
-            Tproj = copy(Targ)
+            # temporarily lose triangular structure
+            Tproj = copy(Matrix(Targ))
             # if we have some eigenvalues in our window
             if m>0
                 # TODO: post waitbar
@@ -197,7 +198,7 @@ function psa_compute(Targ, eigA, opts, S=I; myprintln=println, mywarn=warn,
                     # TODO: check for pause ll 291ff
                     # TODO: check for stop/cancel
                 end
-                Tproj = triu(Tproj[1:m,1:m])
+                Tproj = UpperTriangular(triu(Tproj[1:m,1:m]))
             end
         end
     else
@@ -464,7 +465,7 @@ Compute pseudospectra of a dense triangular matrix
 """
 function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
     if isreal(T)
-        Twork = T .+ 0.0im
+        Twork = T .+ complex(eltype(T))(0)
     else
         Twork = copy(T)
     end
@@ -491,6 +492,7 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
     # for small matrices just use SVD
     if n < psathresholds.minlancs4psa
         algo = :SVD
+        Twork = Matrix(Twork)
         if use_eye
             for j=1:ly
                 for k=1:lx
@@ -549,17 +551,15 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
                     T1[1:m+1:end] = diaga - zpt
                     T2[1:m+1:end] = cdiaga - zpt'
                 end
+                F1 = factorize(T1)
                 q = copy(qt)
                 qold = zeros(n)
                 β = 0.0
                 σold = 0.0
                 local σ
-                #T2t = LowerTriangular(T2)
-                #T1t = UpperTriangular(T1)
                 for l=1:maxit
-                    v = T1 \ (T2 \ q) - β * qold
-                    # this should be identical and faster, but fails. Why?
-                    # v = T1t \ (T2t \ q) - β * qold
+                    # v = T1 \ (T2 \ q) - β * qold
+                    v = (F1 \ (F1' \ q)) - β * qold
                     α = real(vecdot(q,v)) # (q' * v)
                     v = v - α * q
                     β = norm(v)

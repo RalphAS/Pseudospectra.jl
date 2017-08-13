@@ -18,6 +18,7 @@ Portions derived from EigTool:
 =#
 
 using ProgressMeter
+
 # needed for .& and abstract types
 using Compat
 
@@ -245,7 +246,7 @@ process a matrix into the auxiliary data structure used by Pseudospectra.
 - `:verbosity::Int`: obvious
 - `:eigA`: eigenvalues of `A`, if already known
 - `:proj_lev`: projection level (see `psa_compute`)
-- `:npts`: edge length of grid for computing and plotting
+- `:npts`: edge length of grid for computing and plotting pseudospectra
 - `:arpack_opts::ArpackOptions`: see type description
 - `:levels::Vector{Real}`: contour levels
 - `:ax::Vector{Real}(4)`: bounding box for computation
@@ -262,9 +263,11 @@ function new_matrix(A::AbstractMatrix,
         "Input matrix has infinite or invalid entries."))
 
     # flag for the M x (M-1) Hessenberg form
+    # Presumably intended for the case where projection is done
+    # by a Krylov scheme outside this package.
     AisHess = ((m == (n+1)) && all([x == 0 for x in tril(A,-2)]))
 
-    # user may specify that A is unitarily equivalent to a real matrix
+    # User may specify that A is unitarily equivalent to a real matrix
     # even if it is complex
     Aisreal = get(opts,:real_matrix, !(eltype(A) <: Complex))
 
@@ -281,8 +284,8 @@ function new_matrix(A::AbstractMatrix,
         else
             direct = (n <= nmin4autoiter)
             if (verbosity > 0) && (n > nmin4autoiter)
-                # Might merit a warning since it is most likely not expected
-                # so iteration options are probably inappropriate.
+                # Might merit a warning here since it is most likely not
+                # expected so iteration options are probably inappropriate.
                 # For now, unspec. iteration options already => a warning.
                 println("defaulting to iterative for large dense mtx")
             end
@@ -309,13 +312,14 @@ function new_matrix(A::AbstractMatrix,
         # Checking for schurfact! method should work,
         # but that's just asking for surprises. This should be robust.
         try
-            # For some reason Julia devs think a real Schur decomp
-            # should shadow the true (not real!) thing
             if eltype(A) <: Complex
-                Tschur,U,eigA  = schur(A)
+                F = schurfact(A)
             else
-                Tschur,U,eigA  = schur(A+zero(eltype(A))*im)
+                # For some reason Julia devs think a real Schur decomp
+                # should shadow the true (not real!) thing
+                F = schurfact(A+zero(eltype(A))*im)
             end
+            Tschur,U,eigA  = F[:T],F[:Z],F[:values]
             haveschur = true
         catch JE
             isa(JE,MethodError) || rethrow(JE)
@@ -325,8 +329,15 @@ function new_matrix(A::AbstractMatrix,
                 eigA = eigvals(A)
             catch JE
                 isa(JE,MethodError) || rethrow(JE)
+                # FIXME: allow algorithmic errors too; what are they?
+
+                # warning is needed here since we need axes in this case
                 warn("Failed to compute eigenvalues; proceeding without.")
-                println("Exception was $JE")
+                if verbosity > 0
+                    # if we display(JE) we get the whole damn matrix too
+                    println("Exception was method error: ",JE.f,
+                            " for ",typeof(A))
+                end
             end
         end
         (verbosity > 1) && (m > 100) && println("...done.")
@@ -340,7 +351,7 @@ function new_matrix(A::AbstractMatrix,
                                    :projection_on => true,
                                    :proj_lev => proj_lev,
                                    :ews => eigA)
-        ps_data = PSAStruct(Tschur, input_unitary_mtx * U,
+        ps_data = PSAStruct(UpperTriangular(Tschur), input_unitary_mtx * U,
                             A, input_unitary_mtx, I, ps_dict)
 
     elseif issparse(A) || AisHess || !direct || Aissquare
@@ -368,15 +379,17 @@ function new_matrix(A::AbstractMatrix,
         elseif issparse(A) && convert2full
             (verbosity > 0) &&
                 println("converting to full for direct computation")
-            Tschur,U,eigA  = schur(full(ps_data.matrix))
-            ps_dict[:schur_mtx] = Tschur
-            ps_dict[:schur_unitary_mtx] = U
-            ps_data.matrix = Tschur
-            ps_data.unitary_mtx = ps_data.input_unitary_mtx * Tschur
+            Atmp = ps_data.matrix
+            # FIXME: handle cases where this fails
+            F  = schurfact(full(Atmp)+complex(eltype(Atmp))(0))
+            ps_dict[:schur_mtx] = F[:T]
+            ps_dict[:schur_unitary_mtx] = F[:Z]
+            ps_data.matrix = UpperTriangular(F[:T])
+            ps_data.unitary_mtx = ps_data.input_unitary_mtx * F[:T]
             ps_dict[:sparse_direct] = false
             ps_dict[:projection_on] = true
-            ps_dict[:ews] = eigA
-            ps_dict[:orig_ews] = copy(eigA)
+            ps_dict[:ews] = F[:values]
+            ps_dict[:orig_ews] = copy(F[:values])
         end
     else # dense, non-square (but not Hessenberg), and direct
         rfS,rfT = rect_fact(A)
@@ -420,7 +433,8 @@ end
 """
     new_matrix(A, opts::Dict{Symbol,Any}=()) -> ps_data
 
-process a linear operator object into the auxiliary data structure used by Pseudospectra.
+process a linear operator object into the auxiliary data structure used by
+Pseudospectra.
 
 There must be methods with `A` for `eltype`, `size`, and `A_mul_B!`.
 """
@@ -481,7 +495,8 @@ end
 
 Compute pseudospectra and plot a spectral portrait.
 
-If using an iterative method to get eigenvalues, invokes that first.
+If using an iterative method to get eigenvalues and projection, invoke
+that first.
 
 # Arguments
 - `ps_data::PSAStruct`: ingested matrix, as processed by `new_matrix`
@@ -546,7 +561,11 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
 
         redrawcontour(gs, ps_data, opts)
     else
-        # iterative method
+        # Iterative method (uses ARPACK):
+        # This performs implicitly restart Arnoldi steps to
+        # project on a Krylov subspace, yielding a Hessenberg matrix
+        # with approximately the same spectral properties (locally) as A.
+
         ps_data.matrix = ps_data.input_matrix
         m,n = size(ps_data.matrix)
         ao = ps_dict[:arpack_opts]
@@ -609,6 +628,10 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
             println("xeigs ews:")
             display(ews); println()
         end
+
+        # We basically replace A with H, saving some projection information,
+        # and proceed with the dense matrix algorithms.
+
         ps_dict[:ew_estimates] = true
         ps_dict[:proj_matrix] = H
         ps_data.matrix = H
