@@ -16,9 +16,15 @@ if isdefined(Main,:psplotter)
     psplotter = Main.psplotter
     # warning: assume plotting package is properly initialized
 else
-    psplotter = :Plots
-    using Plots
-    pyplot() # seems most reliable for png output
+    psplotter = Symbol(get(ENV,"PSPLOTTER","Plots"))
+    if psplotter == :Plots
+        using Plots
+        pyplot() # seems most reliable for png output
+    elseif psplotter == :PyPlot
+        using PyPlot
+    else
+        error("invalid ENV[\"PSPLOTTER\"]")
+    end
 end
 setpsplotter(psplotter)
 headless = isdefined(Main,:displayplots) ? !Main.displayplots : true
