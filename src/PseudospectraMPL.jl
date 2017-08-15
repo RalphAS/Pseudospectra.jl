@@ -25,6 +25,7 @@ import Pseudospectra: mtxexpsplot, mtxpowersplot
 
 # we use these internals here:
 import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
+import Pseudospectra: dummyqdlg, replqdlg
 import Pseudospectra: numrange!
 
 # for convenience (so one could import just this module)
@@ -226,7 +227,8 @@ function plotmode(gs::MPLGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
         the_col = "magenta"
     else
         modestr = "Eigen"
-        Ss,q = oneeigcond(A,z,verbosity)
+        Ss,q = oneeigcond(A,z,verbosity,
+                          dlg=ifelse(isheadless(gs),dummyqdlg,replqdlg))
         the_cond = Ss
         the_col = "cyan"
     end

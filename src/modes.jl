@@ -72,14 +72,14 @@ end
 Obtain condition and eigenvector(s) for eigenvalue `ew` associated with
 Schur factor `T`.
 """
-function oneeigcond(T0,ew0,verbosity;dlg=replqdlg)
+function oneeigcond(T0,ew0,verbosity; dlg=replqdlg, max_its=3)
     quest_str = ("The eigenvector could not be determined by inverse iteration."
                  * "\nDo you want to do a (possibly slow) dense SVD instead?")
     n,m = size(T0)
     @assert n==m
     tol = 1e-14
     # perturb eigenvalue to avoid exact singularity
-    ew = ifelse(n<200,ew0,ew0*(1+2*eps(real(ew0))))
+    ew = ifelse(n<200,ew0,ew0*(1+2*eps(abs(ew0))))
     T = copy(T0)
     T = T - ew * I
     # for small matrices, use SVD
@@ -96,7 +96,6 @@ function oneeigcond(T0,ew0,verbosity;dlg=replqdlg)
         v0 = normalize!(randn(n)+0im)
         infs_found = false # indicator for inv-iter success
         evr = copy(v0)
-        max_its = 3
         local resid
         for i=1:max_its
             oldev = copy(evr)
@@ -136,7 +135,7 @@ function oneeigcond(T0,ew0,verbosity;dlg=replqdlg)
                 catch JE
                     infs_found = true
                 end
-                any(isinf(evl)) && (infs_found = true)
+                any(isinf.(evl)) && (infs_found = true)
                 if infs_found
                     break
                 end

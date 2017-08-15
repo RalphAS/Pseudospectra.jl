@@ -109,6 +109,8 @@ function replqdlg(query,details=""; options=["Yes","No"])
     false
 end
 
+dummyqdlg(query,details=""; options=["Yes","No"]) = 1
+
 """
 compute reasonable axis limits for displaying a vector of points & environs
 """
