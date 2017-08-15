@@ -86,6 +86,13 @@ type LevelDesc
     end
 end
 
+"""
+    Portrait
+
+structure representing a spectral portrait; includes a mesh for `z=x+iy`,
+values of the resolvent norm on the mesh, suitable contour levels,
+and some other metadata.
+"""
 type Portrait
     x::Vector
     y::Vector
@@ -111,6 +118,15 @@ function show(io::IO,z::Portrait)
     print(io,"levels: $(z.levels)")
 end
 
+"""
+    ArpackOptions{T}(; nev=6, ncv=0, which=:LM,
+                                           tol=zero(T),maxiter=300,
+                                           v0=Vector{T}(0), have_v0=false,
+                                           sigma=nothing)
+
+constructs an object to manage the Arnoldi scheme; see `eigs` for the
+meaning of fields.
+"""
 type ArpackOptions{T}
     # Control of iterative computations:
     nev::Int # nr. of eigenvalues for eigs() to search for
@@ -119,18 +135,16 @@ type ArpackOptions{T}
     tol::Real # tolerance for eigs()
     maxiter::Int # bound for eigs()
     v0::Vector # initial Ritz vector for eigs()
-    have_v0::Bool
-    sigma
-    #    function ArpackOptions{T}(; nev=6, ncv=0, which=:LM, tol=zero(T),
+    sigma # shift parameter for eigs()
+
     function (::Type{ArpackOptions{T}}){T}(; nev=6, ncv=0, which=:LM,
                                            tol=zero(T),maxiter=300,
-                                           v0=Vector{T}(0), have_v0=false,
+                                           v0=Vector{T}(0),
                                            sigma=nothing)
-        have_v0 = !isempty(v0)
         if ncv==0
             ncv = max(20,2*nev+1)
         end
-        new{T}(nev,ncv,which,tol,maxiter,v0,have_v0,sigma)
+        new{T}(nev,ncv,which,tol,maxiter,v0,sigma)
     end
 end
 
@@ -160,7 +174,22 @@ function ewsplotter end
 function plotmode end
 function replzdlg end
 function addmark end
+"""
+    mtxexpsplot(gs::GUIState,ps_data,dt=0.1,nmax=50; gradual=false)
+
+plot the evolution of `∥e^(tA)∥`.
+
+This is useful for analyzing linear initial value problems `∂_t x=Ax`.
+"""
 function mtxexpsplot end
+
+"""
+    mtxpowersplot(gs::GUIState,ps_data,nmax=50;gradual=false)
+
+plot norms of powers of a matrix `∥A^k∥`
+
+This is useful for analyzing iterative linear algebra methods.
+"""
 function mtxpowersplot end
 function fillopts end
 function isheadless end
@@ -247,10 +276,10 @@ process a matrix into the auxiliary data structure used by Pseudospectra.
 - `:eigA`: eigenvalues of `A`, if already known
 - `:proj_lev`: projection level (see `psa_compute`)
 - `:npts`: edge length of grid for computing and plotting pseudospectra
-- `:arpack_opts::ArpackOptions`: see type description
+- `:arpack_opts::ArpackOptions`: (see type description)
 - `:levels::Vector{Real}`: contour levels
-- `:ax::Vector{Real}(4)`: bounding box for computation
-- `:scale_equal::Bool`: force equal axis scales for spectral portraits?
+- `:ax::Vector{Real}(4)`: bounding box for computation `[xmin,xmax,ymin,ymax]`
+- `:scale_equal::Bool`: force isotropic axes for spectral portraits?
 """
 function new_matrix(A::AbstractMatrix,
                     opts::Dict{Symbol,Any}=Dict{Symbol,Any}())

@@ -10,9 +10,13 @@ non-symmetric matrices, and plotting them along with eigenvalues
 also provided.
 
 ## Mathematical background
-The ϵ-pseudospectrum of a matrix `A` is the locus (in the complex plane) of
-eigenvalues of perturbations `A+E` where `norm(E) < ϵ`. Specifically,
-this package works with the unweighted 2-norm.
+The ϵ-pseudospectrum of a matrix `A`, `σ_ϵ(A)`, is the set of complex
+numbers `λ` such that
+* there is a perturbation `E` where `∥E∥ < ϵ` such that `λ` is an eigenvalue of the matrix `A+E`,
+* the resolvent norm `∥(A-λI)^(-1)∥ > 1/ϵ`,
+
+(the definitions are equivalent).
+Specifically, this package is currently limited to the unweighted 2-norm.
 
 Among other things, pseudospectra:
 * elucidate transient behavior hidden to eigen-analysis, and
@@ -67,6 +71,7 @@ options = Dict{Symbol,Any}()
 driver!(ps_data,options,gs)
 ```
 
+This should show a contour plot of `log10(ϵ)`
 More realistic uses are (as always) in the examples and test folders.
 
 # Disclaimer

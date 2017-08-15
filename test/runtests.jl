@@ -1,3 +1,6 @@
+# To run only selected tests:
+# $julia -e 'include("test/runtests.jl")' TEST1...
+
 using Pseudospectra, Base.Test
 
 tests = ["basic","arpack1","medcplx","medrect","smrect","spdirect",
