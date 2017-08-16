@@ -555,15 +555,16 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
             end
         end
 
-        psa_opts = Dict{Symbol,Any}(:ax=>zoom.ax,:npts=>zoom.npts,
-                                    :levels=>expandlevels(zoom.levels),
+        psa_opts = Dict{Symbol,Any}(:levels=>expandlevels(zoom.levels),
                                     :recompute_levels=>zoom.autolev,
                                     :proj_lev=>zoom.proj_lev,
                                     :scale_equal=>zoom.scale_equal,
                                     :real_matrix=>ps_dict[:Aisreal],
                                     :verbosity=>verbosity)
         ss = size(A)
-        Z,x,y,t_levels,err,Tproj,eigAproj,algo = psa_compute(A,eigA,psa_opts,
+        Z,x,y,t_levels,err,Tproj,eigAproj,algo = psa_compute(A,zoom.npts,
+                                                             zoom.ax,
+                                                             eigA,psa_opts,
                                                         myprintln=myprintln,
                                                         mywarn=mywarn)
 

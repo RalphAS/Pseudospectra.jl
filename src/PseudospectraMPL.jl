@@ -502,7 +502,8 @@ function psasimple(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
         opts[:ax] = getxylims(gs.mainph)
     end
 
-    Z,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,eigA,opts)
+    Z,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,opts[:npts],
+                                                  opts[:ax],eigA,opts)
 
     # from redrawcontour()
     figure(gs.mainfignum) # in case the user looked elsewhere

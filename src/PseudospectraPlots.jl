@@ -454,7 +454,8 @@ function psasimple(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
         opts[:ax] = getxylims(gs.mainph)
     end
 
-    Z,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,eigA,opts)
+    Z,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,opts[:npts],
+                                                  opts[:ax],eigA,opts)
         gs.mainph = scatter(real(eigA),imag(eigA),color="black",label="")
     setxylims!(gs.mainph,opts[:ax])
     if isempty(levels)

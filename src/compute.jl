@@ -22,7 +22,7 @@ end
 const psathresholds = ComputeThresholds(55,200,20)
 
 """
-    psa_compute(T,eigA,opts,S=I) -> (Z,x,y,levels,err,Tproj,eigAproj,algo)
+    psa_compute(T,npts,ax,eigA,opts,S=I) -> (Z,x,y,levels,err,Tproj,eigAproj,algo)
 
 Compute pseudospectra of a (decomposed) matrix.
 
@@ -31,13 +31,13 @@ Uses a modified version of L.Trefethen's `psa` code
 a call to `schur()`); otherwise less efficient methods are used.
 
 # Arguments
-- `T`:      input matrix
+- `T`:      input matrix, usu. from `schur()`
+- `npts`:   grid will have `npts × npts` nodes
+- `ax`:     axis on which to plot `[min_real, max_real, min_imag, max_imag]`
+- `eigA`:   eigenvalues of the matrix, usu. also produced by `schur()`
 - `S=I`:    2nd matrix, if rectangular and problem is now generalised
-- `eigA`:   eigenvalues of the matrix, also produced by `schur()`
 - `opts::Dict{Symbol,Any}`: holding options. Keys used here are as follows:
-  - `:npts`: grid will have npts*npts nodes (REQUIRED)
   - `:levels::Vector{Real}` `log10(ϵ)` for the desired ϵ levels; default depends on actual levels in contour plot
-  - `:ax`: axis on which to plot `[min_real, max_real, min_imag, max_imag]` (REQUIRED)
   - `:re_calc_lev`: automatically recompute ϵ levels? Default: true
   - `:Aisreal`: is the input matrix real (symmetric (pseudo)spectra)? This is needed because `T` could be complex even if `A` was real. Default: true
   - `:proj_lev`: the proportion by which to extend the axes in all directions before projection. If negative, exclude subspace of eigenvalues smaller than inverse fraction. Default: ∞ (i.e., no projection)
@@ -61,7 +61,8 @@ which reduces the matrix to a projected Hessenberg form before invoking
 - `eigAproj`:  eigenvalues projected onto
 - `algo::Symbol`: indicates which algorithm was used
 """
-function psa_compute(Targ, eigA, opts, S=I; myprintln=println, mywarn=warn,
+function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
+                     myprintln=println, mywarn=warn,
                      psatol = 1e-5)
 
     m,n = size(Targ)
@@ -84,18 +85,12 @@ function psa_compute(Targ, eigA, opts, S=I; myprintln=println, mywarn=warn,
         levels = -8:-1
         comp_opts[:recompute_levels] = true
     end
-    if isempty(get(opts,:ax,zeros(0)))
-        error("Axis opts[:ax] must be specified for pseudospectrum computation")
-    end
-
     all_opts = merge(comp_opts, opts)
 
-    ax = all_opts[:ax]
     proj_lev = get(all_opts,:proj_lev,Inf)
     re_calc_lev = all_opts[:recompute_levels]
     verbosity = get(all_opts,:verbosity,1)
 
-    npts = all_opts[:npts]
     if all_opts[:scale_equal]
         y_dist = ax[4]-ax[3]
         x_dist = ax[2]-ax[1]
