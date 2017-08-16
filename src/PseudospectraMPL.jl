@@ -543,6 +543,7 @@ end
 function addmark(gs::MPLGUIState,z,mykey)
     x,y = real(z),imag(z)
     figure(gs.mainfignum)
+    #=
     l = gs.markerlist
     # remove any existing mark of this sort
     # WARNING: logic assumes zero or one mark per class
@@ -553,6 +554,7 @@ function addmark(gs::MPLGUIState,z,mykey)
             break
         end
     end
+    =#
     if mykey == :pseudo
         ltype = "mo"
     elseif mykey == :eigen
@@ -561,7 +563,7 @@ function addmark(gs::MPLGUIState,z,mykey)
         ltype = "k*"
     end
     ph = plot([x],[y],ltype)
-    push!(gs.markerlist,Dict(:class => mykey, :handle => ph))
+    # push!(gs.markerlist,Dict(:class => mykey, :handle => ph))
     nothing
 end
 
