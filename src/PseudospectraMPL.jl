@@ -25,7 +25,7 @@ import Pseudospectra: mtxexpsplot, mtxpowersplot
 
 # we use these internals here:
 import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
-import Pseudospectra: dummyqdlg, replqdlg
+import Pseudospectra: dummyqdlg, replqdlg, transient_bestlb
 import Pseudospectra: numrange!
 
 # for convenience (so one could import just this module)
@@ -49,9 +49,11 @@ const default_opts = Dict{Symbol,Any}(
 
 type MPLGUIState <: GUIState
     mainph # opaque backend object for main plot object
+    # the fig. numbers are redundant, but more convenient
     mainfignum::Int
+    secondaryph # opaque backend object for secondary plot object
+    secondaryfignum::Int
     drawcmd
-    ph2 # opaque backend object for secondary plot object
     markerlist
     counter
     is_headless::Bool
@@ -70,7 +72,7 @@ type MPLGUIState <: GUIState
         else
             ion()
         end
-        new(ph,num,dc,nothing,[],0,headless,savefigs,"")
+        new(ph,num,nothing,0,dc,[],0,headless,savefigs,"")
     end
 end
 
@@ -207,11 +209,35 @@ function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts)
     #   sleep(0.01)
 end
 
-function ewsplotter(gs::MPLGUIState, ews::Vector, zoom)
+"""
+    selectfig(gs,main::Bool)
 
-        figure(gs.mainfignum)
-        clf()
-        plot(real(ews),imag(ews),"k.")
+start a new figure, or attach to an existing one.
+"""
+function selectfig(gs,main::Bool)
+    if main
+        if gs.mainfignum > 0
+            figure(gs.mainfignum)
+        else
+            fh = figure()
+            gs.mainph = fh
+            gs.mainfignum = fh[:number]
+        end
+    else
+        if gs.secondaryfignum > 0
+            figure(gs.secondaryfignum)
+        else
+            fh = figure()
+            gs.secondaryph = fh
+            gs.secondaryfignum = fh[:number]
+        end
+    end
+end
+
+function ewsplotter(gs::MPLGUIState, ews::Vector, zoom)
+    selectfig(gs,true)
+    clf()
+    plot(real(ews),imag(ews),"k.")
     isempty(zoom.ax) && (zoom.ax = vec2ax(ews))
     setxylims!(gs.mainph,zoom.ax)
     drawp(gs,gs.mainph,1)
@@ -249,15 +275,15 @@ function plotmode(gs::MPLGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     end
     λ_str = @sprintf("%12g%+12gi",real(z),imag(z))
 
-        # FIXME: manage figure no
-        fh = figure()
-        showlog && subplot(2,1,1)
+    selectfig(gs, false)
+    clf()
+    showlog && subplot(2,1,1)
 
-        plot(x,abs.(q),color="black",label="abs")
-        plot(x,-abs.(q),color="black")
-        plot(x,real.(q),color=the_col,label="realpt")
-        legend()
-        xlim(x[1],x[end])
+    plot(x,abs.(q),color="black",label="abs")
+    plot(x,-abs.(q),color="black")
+    plot(x,real.(q),color=the_col,label="realpt")
+    legend()
+    xlim(x[1],x[end])
         # DEVNOTE: upstream puts the_str in the plot area (often obscured)
         #=
         y0,y1 = ylim()
@@ -266,17 +292,18 @@ function plotmode(gs::MPLGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
         # upstream also has fontweight="bold", but that's hard w/ math mode
         text(x[1]+dx/40,y0+dy/10,the_str,fontsize=12)
         =#
-        title("$(modestr)mode: " *
-              "\$\\lambda=" * λ_str * "\$\n" * the_str)
-        if showlog
-            subplot(2,1,2)
-            semilogy(x,abs.(q),"k")
-            xlim(x[1],x[end])
-        end
+    title("$(modestr)mode: " *
+          "\$\\lambda=" * λ_str * "\$\n" * the_str)
+    if showlog
+        subplot(2,1,2)
+        semilogy(x,abs.(q),"k")
+        xlim(x[1],x[end])
+    end
     drawp(gs,gs.mainph,2)
 end
 
-function mtxpowersplot(gs::MPLGUIState,ps_data,nmax=50;gradual=false)
+function mtxpowersplot(gs::MPLGUIState,ps_data,nmax=50;gradual=false,
+                       lbmethod=:none,lbdk=0.25)
 
     stop_trans = false
 
@@ -304,10 +331,10 @@ function mtxpowersplot(gs::MPLGUIState,ps_data,nmax=50;gradual=false)
 
     function doplot()
         # if plotting gradually, control axis limits to avoid jumpiness
-            if newfig
-                fh = figure()
-                newfig = false
-            end
+        if newfig
+            selectfig(gs,false)
+            newfig = false
+        end
             subplot(2,1,1)
             gradual && cla()
             plot(the_pwr[1:pos],trans[1:pos])
@@ -368,6 +395,15 @@ function mtxpowersplot(gs::MPLGUIState,ps_data,nmax=50;gradual=false)
         pos -= 1
         doplot()
     end
+    if lbmethod != :none
+        pts,bnds,sel_pt = transient_bestlb(ps_data,:powers,0:nmax,
+                                           method=lbmethod, dk=lbdk)
+
+        plot(pts,bnds,"m")
+        # upstream has something like
+        # figure(gs.mainfignum)
+        # scatter(sel_pt[:,1],sel_pt[:,2])
+    end
 end
 
 function mtxexpsplot(gs::MPLGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
@@ -395,10 +431,11 @@ function mtxexpsplot(gs::MPLGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
     newfig = true
 
     function doplot()
-            if newfig
-                fh = figure()
-                newfig = false
-            end
+        if newfig
+            selectfig(gs,false)
+            clf()
+            newfig = false
+        end
             subplot(2,1,1)
             gradual && cla()
             plot(the_time[1:pos],trans[1:pos])

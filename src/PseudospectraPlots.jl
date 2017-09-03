@@ -25,7 +25,7 @@ import Pseudospectra: mtxexpsplot, mtxpowersplot, isheadless
 
 # we use these internals here:
 import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
-import Pseudospectra: dummyqdlg, replqdlg
+import Pseudospectra: dummyqdlg, replqdlg, transient_bestlb
 import Pseudospectra: numrange!
 
 # for convenience (so one could import just this module)
@@ -245,7 +245,8 @@ function plotmode(gs::PlotsGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     nothing
 end
 
-function mtxpowersplot(gs::PlotsGUIState,ps_data,nmax=50;gradual=false)
+function mtxpowersplot(gs::PlotsGUIState,ps_data,nmax=50;gradual=false,
+                       lbmethod=:none, lbdk=0.25)
 
     stop_trans = false
 
@@ -270,6 +271,7 @@ function mtxpowersplot(gs::PlotsGUIState,ps_data,nmax=50;gradual=false)
     # spectral radius
     alp = maximum(abs.(ps_data.ps_dict[:ews]))
     newfig = true
+    pts,bnds = zeros(0),zeros(0)
 
     function doplot()
             p1 = plot(the_pwr[1:pos],trans[1:pos],label="",
@@ -282,13 +284,21 @@ function mtxpowersplot(gs::PlotsGUIState,ps_data,nmax=50;gradual=false)
                       overwrite=false)
             yaxis!(p2,:log10)
             #              yaxis=(:log10,),xlims=(ax2[1],ax2[2]),
-            plot!(p2,the_pwr[1:pos],alp.^the_pwr[1:pos],label="")
+            # spectral growth
+            plot!(p2,the_pwr[1:pos],alp.^the_pwr[1:pos],label="spectral")
 
+            if !isempty(bnds)
+                plot!(p2,pts,bnds,label="lower bound")
+            end
             yspan = log10(ax2[4]) - log10(ax2[3])
             step = max(1,floor(yspan/3))
             #    plot!(yticks = log10(ax2[3]):step:floor(log10(ax2[4])))
             p3 = plot(p1,p2,layout=(2,1),overwrite=false)
             drawp(gs,p3,2)
+    end
+    if lbmethod != :none
+        pts,bnds,sel_pt = transient_bestlb(ps_data,:powers,0:nmax,
+                                           method=lbmethod, dk=lbdk)
     end
     while !stop_trans
         mtx = A * mtx

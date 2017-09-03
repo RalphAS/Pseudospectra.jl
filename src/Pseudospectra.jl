@@ -29,7 +29,7 @@ export PSAStruct, ArpackOptions, Portrait, GUIState
 
 # Not exported, but may be used by plotting packages:
 # vec2ax, expandlevels
-# oneeigcond, psmode_inv_lanczos
+# oneeigcond, psmode_inv_lanczos, transien_bestlb
 
 # Associated plotting packages should provide these, specialized on their
 # own GUIState types:
@@ -170,6 +170,14 @@ end
 function redrawcontour end
 function surfplot end
 function arnoldiplotter! end
+
+"""
+    ewsplotter(gs::MPLGUIState, ews::Vector, zoom)
+
+plot eigenvalues
+
+So we have something to look at while waiting for the compute engines.
+"""
 function ewsplotter end
 function plotmode end
 function replzdlg end
@@ -201,6 +209,7 @@ include("modes.jl")
 include("abscissa.jl")
 include("radius.jl")
 include("numrange.jl")
+include("transients.jl")
 include("plotter.jl")
 
 """
