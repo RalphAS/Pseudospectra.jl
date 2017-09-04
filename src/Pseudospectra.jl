@@ -23,13 +23,14 @@ using ProgressMeter
 using Compat
 
 export new_matrix, driver!
-export psa_compute, pspa_2way, pspr_2way
+export psa_compute, psa_radius, psa_abscissa
+export numerical_range, numerical_abscissa
 export modeplot, mtxexpsplot, mtxpowersplot, isheadless, iscomputed
 export PSAStruct, ArpackOptions, Portrait, GUIState
 
 # Not exported, but may be used by plotting packages:
 # vec2ax, expandlevels
-# oneeigcond, psmode_inv_lanczos, transien_bestlb
+# oneeigcond, psmode_inv_lanczos, transient_bestlb
 
 # Associated plotting packages should provide these, specialized on their
 # own GUIState types:

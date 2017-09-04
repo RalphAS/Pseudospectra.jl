@@ -31,11 +31,13 @@ modeplot
 ## Other computations
 
 ```@docs
-pspr_2way
+psa_radius
 
-pspa_2way
+psa_abscissa
 
-Pseudospectra.numrange!
+numerical_range
+
+numerical_abscissa
 ```
 
 ## Other plots

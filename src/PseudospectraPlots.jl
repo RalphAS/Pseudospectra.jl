@@ -431,7 +431,8 @@ end
     psa(A [,opts]) -> ps_data, graphics_state
 
 Compute and plot pseudospectra of a matrix.
-This is the main command-line driver for the Pseudospectra package.
+
+This is a rudimentary command-line driver for the Pseudospectra package.
 """
 function psa(A::AbstractMatrix, optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
     opts = merge(default_opts,optsin)
@@ -441,43 +442,6 @@ function psa(A::AbstractMatrix, optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
     driver!(ps_data,opts,gs)
     ps_data, gs
 end
-
-"""
-    psasimple(A,[,opts])
-
-Compute and plot pseudospectra of a dense square matrix.
-This is a simple interface w/o all the data structures.
-"""
-function psasimple(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
-    # from new_matrix()
-    n,m=size(A)
-    @assert n==m "matrix must be square"
-    opts[:real_matrix] = !(eltype(A) <: Complex)
-    Tschur,U,eigA  = schur(A)
-
-    gs = PlotsGUIState()
-    gs.mainph = scatter(real(eigA),imag(eigA),color="black",label="")
-    if haskey(opts,:ax)
-        setxylims!(gs.mainph,opts[:ax])
-    else
-        println("using eigvals for axis limits")
-        opts[:ax] = getxylims(gs.mainph)
-    end
-
-    Z,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,opts[:npts],
-                                                  opts[:ax],eigA,opts)
-        gs.mainph = scatter(real(eigA),imag(eigA),color="black",label="")
-    setxylims!(gs.mainph,opts[:ax])
-    if isempty(levels)
-        contour!(gs.mainph,x,y,log10.(Z),linewidth=2)
-    else
-        contour!(gs.mainph,x,y,log10.(Z),levels=levels,linewidth=2)
-    end
-    drawp(gs,gs.mainph,1)
-
-    nothing
-end
-
 #############################################################
 # Utilities
 

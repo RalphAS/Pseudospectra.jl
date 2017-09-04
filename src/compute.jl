@@ -22,25 +22,26 @@ end
 const psathresholds = ComputeThresholds(55,200,20)
 
 """
-    psa_compute(T,npts,ax,eigA,opts,S=I) -> (Z,x,y,levels,err,Tproj,eigAproj,algo)
+    psa_compute(T,npts,ax,eigA,opts,S=I) -> (Z,x,y,levels,info,Tproj,eigAproj,algo)
 
 Compute pseudospectra of a (decomposed) matrix.
 
-Uses a modified version of L.Trefethen's `psa` code
-(Acta Numerica 1999). The matrix `T` should be upper triangular (e.g. from
+Uses a modified version of the code in [^Trefethen1999].
+The matrix `T` should be upper triangular (e.g. from
 a call to `schur()`); otherwise less efficient methods are used.
 
 # Arguments
 - `T`:      input matrix, usu. from `schur()`
 - `npts`:   grid will have `npts × npts` nodes
 - `ax`:     axis on which to plot `[min_real, max_real, min_imag, max_imag]`
-- `eigA`:   eigenvalues of the matrix, usu. also produced by `schur()`
+- `eigA`:   eigenvalues of the matrix, usu. also produced by `schur()`. Pass an empty vector if unknown.
 - `S=I`:    2nd matrix, if rectangular and problem is now generalised
 - `opts::Dict{Symbol,Any}`: holding options. Keys used here are as follows:
   - `:levels::Vector{Real}` `log10(ϵ)` for the desired ϵ levels; default depends on actual levels in contour plot
-  - `:re_calc_lev`: automatically recompute ϵ levels? Default: true
-  - `:Aisreal`: is the input matrix real (symmetric (pseudo)spectra)? This is needed because `T` could be complex even if `A` was real. Default: true
+  - `:recompute_levels`: automatically recompute ϵ levels? Default: true
+  - `:real_matrix`: is the original matrix real (so portrait is symmetric)? This is needed because `T` could be complex even if `A` was real. Default: true
   - `:proj_lev`: the proportion by which to extend the axes in all directions before projection. If negative, exclude subspace of eigenvalues smaller than inverse fraction. Default: ∞ (i.e., no projection)
+  - `:scale_equal`: force the grid to be isotropic? Default: false
 
 Note: projection is only done for square, dense matrices.  Projection for
 sparse matrices may be handled (outside this function) by a Krylov method
@@ -52,14 +53,16 @@ which reduces the matrix to a projected Hessenberg form before invoking
 - `x`         the x coordinates of the grid lines
 - `y`         the y coordinates of the grid lines
 - `levels`    the levels used for the contour plot (if automatically calculated)
-- `err`       an error flag, used if automatic level creation failed:
+- `info`      flag indicating where automatic level creation fails:
   - 0:  No error
-  - -1:  No levels in range specified (either manually, or if matrix too normal to show levels)
-  - -2:  Matrix so non-normal, only zero singular values everywhere
+  - -1:  No levels in range specified (either manually, or if matrix is too normal to show levels)
+  - -2:  Matrix is so non-normal that only zero singular values were found
   - -3:  Computation cancelled
 - `Tproj`:     the projected matrix (an alias to `T` if no projection was done)
 - `eigAproj`:  eigenvalues projected onto
-- `algo::Symbol`: indicates which algorithm was used
+- `algo::Symbol`: descriptor indicating which algorithm was used
+
+[^Trefethen1999] L.N.Trefethen, "Computation of pseudospectra," Acta Numerica 8, 247-295 (1999).
 """
 function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                      myprintln=println, mywarn=warn,
@@ -91,7 +94,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     re_calc_lev = all_opts[:recompute_levels]
     verbosity = get(all_opts,:verbosity,1)
 
-    if all_opts[:scale_equal]
+    if get(all_opts,:scale_equal,false)
         y_dist = ax[4]-ax[3]
         x_dist = ax[2]-ax[1]
         if x_dist > y_dist

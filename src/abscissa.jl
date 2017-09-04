@@ -10,7 +10,7 @@ Copyright © 2002-2014 James Burke, Adrian Lewis, Emre Mengi and Michael Overton
 =#
 
 """
-    pspa_2way(A,ϵ [,d]) -> α,z
+    psa_abscissa(A,ϵ [,d]) -> α,z
 
 Compute ϵ-pseudospectral abscissa for a dense matrix.
 
@@ -32,7 +32,7 @@ Keyword args:
 
 * `verbosity: 0 for quiet, 1 for noise
 """
-function pspa_2way end
+function psa_abscissa end
 
 #=
 Undocumented keyword args:
@@ -44,18 +44,18 @@ won't do by default.
 =#
 
 
-function pspa_2way(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
+function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
 # A = ps_data.input_matrix
 
 # This is the version from EigTool.
 #  It is suited to epsilon not too small (otherwise see Overton's web
 #  pages, or perhaps Mengi's) and moderate size dense A
-#  For large (esp. sparse) A, see Overton's psapsr code
+#  For large (esp. sparse) A, see Overton's psapsr code.
 
     if (plotfig > 0)
         if (!isdefined(Main, :PyPlot) || !isdefined(:plot)
             || !(plot === Main.PyPlot.plot))
-            warn("pspa_2way: plotting is only implemented for PyPlot")
+            warn("plotting is only implemented for PyPlot")
             plotfig = 0
         end
     end
@@ -89,7 +89,7 @@ function pspa_2way(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
         xold = -Inf
         x,ind = findmax(real.(eA)) # initial iterate
         y = imag(eA[ind])
-        (verbosity > 0) && @printf("\npspa_2way: x=%22.15f   ",x)
+        (verbosity > 0) && @printf("\npsa_abscissa: x=%22.15f   ",x)
         iter = 0
         no_imageig = false
         ybest = NaN
@@ -99,7 +99,7 @@ function pspa_2way(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
 
         while !no_imageig && (x > xold)
             iter += 1
-            (iter > 20) && error("pspa_2way: too many steps")
+            (iter > 20) && error("psa_abscissa: too many steps")
             yold = y
             # given current x, look for all relevant interseections of vertical
             # line w/ pseudospectrum, process and return pair midpoints.
@@ -114,7 +114,7 @@ function pspa_2way(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
             end
             no_imageig = isempty(y)
             if !no_imageig
-                (verbosity > 0) && print("pspa_2way: y = $y  ")
+                (verbosity > 0) && print("psa_abscissa: y = $y  ")
 
                 # given resulting y values, look for rightmost intersection of
                 # corresponding horizontal lines w/ pseudospectrum
@@ -125,14 +125,14 @@ function pspa_2way(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
                 x,ybest = pspa_2way_real(A,E,y,imagtol,plotfig,xold)
                 if verbosity > 0
                     println()
-                    print("pspa_2way: x = $x   ")
+                    print("psa_abscissa: x = $x   ")
                 end
                 if x < xold
                     x = xold # terminates while loop
                     ybest = ybestt
                     if verbosity > 0
                         println()
-                        print("pspa_2way: could not find bigger x")
+                        print("psa_abscissa: could not find bigger x")
                     end
                 end # if x < xold
             end # if !no_imageig

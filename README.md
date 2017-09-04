@@ -10,12 +10,17 @@ non-symmetric matrices, and plotting them along with eigenvalues
 also provided.
 
 ## Mathematical background
-The ϵ-pseudospectrum of a matrix `A`, `σ_ϵ(A)`, is the set of complex
-numbers `λ` such that
-* there is a perturbation `E` where `∥E∥ < ϵ` such that `λ` is an eigenvalue of the matrix `A+E`,
-* the resolvent norm `∥(A-λI)^(-1)∥ > 1/ϵ`,
+The spectrum of a matrix is the set of its eigenvalues.
+Roughly, a pseudospectrum is the set of complex numbers "close" to the spectrum
+in some practical sense.
 
-(the definitions are equivalent).
+More precisely, the ϵ-pseudospectrum of a matrix `A`, `σ_ϵ(A)`, is the set of
+complex numbers `λ` such that
+* `λ` is an eigenvalue of some matrix `A+E`, where the norm of the perturbation `‖E‖ < ϵ`, or
+* the resolvent norm `‖(A-λI)^(-1)‖ > 1/ϵ`,
+
+(the definitions are equivalent). This sense of "closeness" is trivial for
+Hermitian matrices, but interesting for others.
 Specifically, this package is currently limited to the unweighted 2-norm.
 
 Among other things, pseudospectra:
@@ -26,7 +31,7 @@ See [the Pseudospectra gateway](http://www.cs.ox.ac.uk/pseudospectra/intro.html)
 for details, references, and more.
 
 ## Package context
-Pseudospectra (along with the QML-based GUI, in the forthcoming PseudospectraView
+Pseudospectra (along with a QML-based GUI, in the forthcoming PseudospectraView
 package) is essentially a translation of the acclaimed MATLAB-based EigTool
 ([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool)),
 code now hosted [on GitHub](https://github.com/eigtool/eigtool).
@@ -58,7 +63,7 @@ Until this project is mature enough to be registered, install by
 Pkg.clone("https://github.com/RalphAS/Pseudospectra.jl")
 ```
 
-# Basics
+# Basic usage
 Minimal use of the REPL interface is as follows:
 
 ```julia
@@ -71,8 +76,10 @@ options = Dict{Symbol,Any}()
 driver!(ps_data,options,gs)
 ```
 
-This should show a contour plot of `log10(ϵ)`
-More realistic uses are (as always) in the examples and test folders.
+This should show a contour plot of `log10(ϵ)` in the vicinity of the spectrum,
+which is the standard display of a spectral portrait.
+More elaborate capabilities are exhibited (as always) in the examples and
+test folders.
 
 # Disclaimer
 This software is provided by the copyright holders and contributors "as is" and

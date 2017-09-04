@@ -502,62 +502,17 @@ end
     psa(A [,opts]) -> ps_data, graphics_state
 
 Compute and plot pseudospectra of a matrix.
-This is the main command-line driver for the Pseudospectra package.
+This is a rudimentary driver for the Pseudospectra package.
 """
 function psa(A::AbstractMatrix, optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
     opts = merge(default_opts,optsin)
     ps_data = new_matrix(A,opts)
-        fh = figure()
-        mainfignum = fh[:number]
-        gs = MPLGUIState(fh,mainfignum)
+    fh = figure()
+    mainfignum = fh[:number]
+    gs = MPLGUIState(fh,mainfignum)
     driver!(ps_data,opts,gs,redrawcontour)
     ps_data, gs
 end
-
-"""
-    psasimple(A,[,opts])
-
-Compute and plot pseudospectra of a dense square matrix.
-This is a simple interface w/o all the data structures.
-"""
-function psasimple(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
-    # from new_matrix()
-    n,m=size(A)
-    @assert n==m "matrix must be square"
-    opts[:real_matrix] = !(eltype(A) <: Complex)
-    Tschur,U,eigA  = schur(A)
-
-        fh = figure()
-        mainfignum = fh[:number]
-        gs = MPLGUIState(fh,mainfignum)
-        plot(real(eigA),imag(eigA),"k.")
-
-    if haskey(opts,:ax)
-        setxylims!(gs.mainph,opts[:ax])
-    else
-        println("using eigvals for axis limits")
-        opts[:ax] = getxylims(gs.mainph)
-    end
-
-    Z,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,opts[:npts],
-                                                  opts[:ax],eigA,opts)
-
-    # from redrawcontour()
-    figure(gs.mainfignum) # in case the user looked elsewhere
-    clf()
-    plot(real(eigA),imag(eigA),"k.")
-    setxylims!(gs.mainph,opts[:ax])
-    if isempty(levels)
-        contour(x,y,log10.(Z),extend="both",linewidths=2)
-    else
-        contour(x,y,log10.(Z),levels=levels,extend="both",linewidths=2)
-    end
-    if get(opts,:colorbar,true)
-        colorbar(extendrect=true)
-    end
-    nothing
-end
-
 ################################################################
 # Utilities
 

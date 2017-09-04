@@ -10,7 +10,7 @@ Copyright © 2002-2014 Michael Overton and Emre Mengi
 =#
 
 """
-    pspr_2way(A,ϵ [,d]) -> r,z
+    psa_radius(A,ϵ [,d]) -> r,z
 
 Compute ϵ-pseudospectral radius for a dense matrix.
 
@@ -32,7 +32,7 @@ Keyword args:
 
 * `verbosity: 0 for quiet, 1 for noise
 """
-function pspr_2way end
+function psa_radius end
 
 #=
 Undocumented keyword args:
@@ -43,7 +43,7 @@ Plotting only works if PyPlot bindings are imported into this module, which we
 won't do by default.
 =#
 
-function pspr_2way(A,epsln,eA=zeros(complex(eltype(A)),0);
+function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
                    verbosity=0,plotfig=0,iterprompt=false)
 
 # This is the version from EigTool.
@@ -54,7 +54,7 @@ function pspr_2way(A,epsln,eA=zeros(complex(eltype(A)),0);
     if (plotfig > 0)
         if (!isdefined(Main, :PyPlot) || !isdefined(:plot)
             || !(plot === Main.PyPlot.plot))
-            warn("pspr_2way: plotting is only implemented for PyPlot")
+            warn("psa_radius: plotting is only implemented for PyPlot")
             plotfig = 0
         end
     end
@@ -100,12 +100,12 @@ function pspr_2way(A,epsln,eA=zeros(complex(eltype(A)),0);
 
         while !no_imageig && (r > rold)
             if verbosity > 0
-                @printf("\npspr_2way: r=%22.15f   ",r)
-                @printf("\npspr_2way: theta=")
+                @printf("\npsa_radius: r=%22.15f   ",r)
+                @printf("\npsa_radius: theta=")
                 print(theta)
             end
             iter += 1
-            (iter > 20) && error("pspr_2way: too many steps")
+            (iter > 20) && error("psa_radius: too many steps")
             thetabestt = thetabest
             rold = r
             # given the resulting directions in theta (computed in previous
