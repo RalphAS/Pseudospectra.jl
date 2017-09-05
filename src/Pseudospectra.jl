@@ -228,7 +228,7 @@ function recalc_levels(sigmin,ax)
         return levels,err
     end
     if smin <= smallσ
-        smin=minimum(sigmin[sigmin >= smallσ])
+        smin=minimum(sigmin[sigmin .>= smallσ])
     end
     max_val = log10(smax)
     min_val = log10(smin)
