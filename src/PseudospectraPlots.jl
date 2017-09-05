@@ -143,7 +143,7 @@ end
 """
 make a surface plot of the current spectral portrait
 """
-function surfplot(gs::PlotsGUIState, ps_data, opts)
+function surfplot(gs::PlotsGUIState, ps_data::PSAStruct, opts)
     zoom = ps_data.zoom_list[ps_data.zoom_pos]
     zoom.computed || return
     nx,ny = size(zoom.Z)
@@ -245,8 +245,8 @@ function plotmode(gs::PlotsGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     nothing
 end
 
-function mtxpowersplot(gs::PlotsGUIState,ps_data,nmax=50;gradual=false,
-                       lbmethod=:none, lbdk=0.25)
+function mtxpowersplot(gs::PlotsGUIState,ps_data::PSAStruct,nmax=50;
+                       gradual=false, lbmethod=:none, lbdk=0.25)
 
     stop_trans = false
 
@@ -342,7 +342,8 @@ function mtxpowersplot(gs::PlotsGUIState,ps_data,nmax=50;gradual=false,
     end
 end
 
-function mtxexpsplot(gs::PlotsGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
+function mtxexpsplot(gs::PlotsGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
+                     gradual=false, lbmethod=:none)
 
     stop_trans = false
     A = ps_data.input_matrix
@@ -365,6 +366,13 @@ function mtxexpsplot(gs::PlotsGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
     # spectral abscissa
     alp = maximum(real.(ps_data.ps_dict[:ews]))
     newfig = true
+    if lbmethod != :none
+        pts,bnds,sel_pt = transient_bestlb(ps_data,:exp,(0:nmax)*dt,
+                                           method=lbmethod)
+    else
+        pts,bnds = zeros(0),zeros(0)
+    end
+
 
     function doplot()
             p1 = plot(the_time[1:pos],trans[1:pos],label="",
@@ -378,6 +386,9 @@ function mtxexpsplot(gs::PlotsGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
             yaxis!(p2,:log10)
 #              yaxis=(:log10,),xlims=(ax2[1],ax2[2]),
             plot!(p2,the_time[1:pos],exp.(alp*the_time[1:pos]),label="")
+            if !isempty(bnds)
+                plot!(p2,pts[1:pos],bnds[1:pos],label="lower bound")
+            end
 
             yspan = log10(ax2[4]) - log10(ax2[3])
             step = max(1,floor(yspan/3))
@@ -434,12 +445,12 @@ Compute and plot pseudospectra of a matrix.
 
 This is a rudimentary command-line driver for the Pseudospectra package.
 """
-function psa(A::AbstractMatrix, optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
-    opts = merge(default_opts,optsin)
-    ps_data = new_matrix(A,opts)
+function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
+    allopts = merge(default_opts,optsin)
+    ps_data = new_matrix(A,allopts)
         gs = PlotsGUIState()
 
-    driver!(ps_data,opts,gs)
+    driver!(ps_data,allopts,gs)
     ps_data, gs
 end
 #############################################################

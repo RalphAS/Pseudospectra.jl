@@ -157,7 +157,7 @@ function redrawcontour(gs::MPLGUIState, ps_data::PSAStruct, opts)
     nothing
 end
 
-function surfplot(gs::MPLGUIState, ps_data, opts)
+function surfplot(gs::MPLGUIState, ps_data::PSAStruct, opts)
     zoom = ps_data.zoom_list[ps_data.zoom_pos]
     zoom.computed || return
     nx,ny = size(zoom.Z)
@@ -214,7 +214,7 @@ end
 
 start a new figure, or attach to an existing one.
 """
-function selectfig(gs,main::Bool)
+function selectfig(gs::MPLGUIState,main::Bool)
     if main
         if gs.mainfignum > 0
             figure(gs.mainfignum)
@@ -302,7 +302,7 @@ function plotmode(gs::MPLGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     drawp(gs,gs.mainph,2)
 end
 
-function mtxpowersplot(gs::MPLGUIState,ps_data,nmax=50;gradual=false,
+function mtxpowersplot(gs::MPLGUIState,ps_data::PSAStruct,nmax=50;gradual=false,
                        lbmethod=:none,lbdk=0.25)
 
     stop_trans = false
@@ -406,7 +406,8 @@ function mtxpowersplot(gs::MPLGUIState,ps_data,nmax=50;gradual=false,
     end
 end
 
-function mtxexpsplot(gs::MPLGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
+function mtxexpsplot(gs::MPLGUIState,ps_data::PSAStruct,dt=0.1,nmax=50;
+                     gradual=false, lbmethod=:none)
 
     stop_trans = false
     A = ps_data.input_matrix
@@ -430,6 +431,12 @@ function mtxexpsplot(gs::MPLGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
     alp = maximum(real.(ps_data.ps_dict[:ews]))
     newfig = true
 
+    if lbmethod != :none
+        pts,bnds,sel_pt = transient_bestlb(ps_data,:exp,dt*(0:nmax),
+                                           method=lbmethod)
+    else
+        bnds = zeros(0)
+    end
     function doplot()
         if newfig
             selectfig(gs,false)
@@ -450,6 +457,9 @@ function mtxexpsplot(gs::MPLGUIState,ps_data,dt=0.1,nmax=50; gradual=false)
             semilogy(the_time[1:pos],trans[1:pos])
             plot(the_time[1:pos],exp.(alp*the_time[1:pos]),"g--")
             xlabel("t")
+            if !isempty(bnds)
+                plot(pts[1:pos],bnds[1:pos],"m")
+            end
             if gradual
                 xlim(ax[1],ax[2])
                 ylim(ax2[3],ax2[4])
@@ -504,13 +514,13 @@ end
 Compute and plot pseudospectra of a matrix.
 This is a rudimentary driver for the Pseudospectra package.
 """
-function psa(A::AbstractMatrix, optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
-    opts = merge(default_opts,optsin)
-    ps_data = new_matrix(A,opts)
+function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
+    allopts = merge(default_opts,opts)
+    ps_data = new_matrix(A,allopts)
     fh = figure()
     mainfignum = fh[:number]
     gs = MPLGUIState(fh,mainfignum)
-    driver!(ps_data,opts,gs,redrawcontour)
+    driver!(ps_data,allopts,gs,redrawcontour)
     ps_data, gs
 end
 ################################################################

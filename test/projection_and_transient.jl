@@ -13,7 +13,7 @@ using Pseudospectra, Base.Test
     driver!(ps_data,opts,gs)
     @test iscomputed(ps_data)
 
-    mtxexpsplot(gs,ps_data,1.0,100)
+    mtxexpsplot(gs,ps_data,1.0,100,lbmethod=:old)
 
     # additional plots to compare w/ book Fig. 22.6:
 
