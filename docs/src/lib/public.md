@@ -1,4 +1,4 @@
-# Library
+# Public interface
 
 ## Importing a matrix or operator
 
@@ -21,4 +21,38 @@ pseudospectra and plot a spectral portrait:
 
 ```@docs
 driver!
+```
+
+## Pseudospectra computation
+
+```@docs
+psa_compute
+```
+
+## Eigen/Pseudo-mode computation and plotting
+
+```@docs
+modeplot
+```
+
+## Other computations
+
+```@docs
+psa_radius
+
+psa_abscissa
+
+numerical_range
+
+numerical_abscissa
+```
+
+## Other plots
+
+```@docs
+Pseudospectra.surfplot
+
+mtxexpsplot
+
+mtxpowersplot
 ```

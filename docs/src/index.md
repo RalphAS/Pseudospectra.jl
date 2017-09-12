@@ -6,10 +6,14 @@ non-symmetric matrices, and plotting them along with eigenvalues
 also provided.
 
 ## Introduction
-The ϵ-pseudospectrum of a matrix `A`, ``\sigma_{\epsilon}(A)``, is the set of complex
-numbers ``\lambda`` such that
-* there is a perturbation ``E`` where ``\|E\| < \epsilon`` such that ``\lambda`` is an eigenvalue of the matrix ``A+E``,
-* the resolvent norm ``\|(A-λI)^{-1}\| > 1/\epsilon``,
+Whereas the spectrum of a matrix is the set of its eigenvalues,
+a pseudospectrum is the set of complex numbers "close" to the spectrum
+in some practical sense.
+
+More precisely, the ϵ-pseudospectrum of a matrix `A`, ``\sigma_{\epsilon}(A)``,
+is the set of complex numbers ``\lambda`` such that
+* ``\lambda`` is an eigenvalue of some matrix ``A+E``, where the perturbation ``E`` is small: ``\|E\| < \epsilon``
+* the resolvent at ``\lambda`` has a large norm: ``\|(A-λI)^{-1}\| > 1/\epsilon``,
 
 (the definitions are equivalent).
 Specifically, this package is currently limited to the unweighted 2-norm.
@@ -17,3 +21,13 @@ Specifically, this package is currently limited to the unweighted 2-norm.
 Among other things, pseudospectra:
 * elucidate transient behavior hidden to eigen-analysis, and
 * indicate the utility of eigenvalues extracted via iterative methods like `eigs`.
+
+## Spectral portraits
+It is customary to display pseudospectra as contour plots of the logarithm
+of the inverse of the resolvent norm ``\epsilon = 1/\|(A-zI)^{-1}\|`` for ``z``
+in a subset of the complex plane. Thus ``\sigma_{\epsilon}(A)`` is the union
+of the interiors of such contours.
+
+## Credit
+Pseudospectra.jl is essentially a translation of the acclaimed MATLAB-based EigTool
+([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool))

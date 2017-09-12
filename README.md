@@ -10,8 +10,8 @@ non-symmetric matrices, and plotting them along with eigenvalues
 also provided.
 
 ## Mathematical background
-The spectrum of a matrix is the set of its eigenvalues.
-Roughly, a pseudospectrum is the set of complex numbers "close" to the spectrum
+Whereas the spectrum of a matrix is the set of its eigenvalues,
+a pseudospectrum is the set of complex numbers "close" to the spectrum
 in some practical sense.
 
 More precisely, the ϵ-pseudospectrum of a matrix `A`, `σ_ϵ(A)`, is the set of
