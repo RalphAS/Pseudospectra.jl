@@ -17,7 +17,7 @@ Compute points along the numerical range of a matrix.
 
 Calls `eigfact` several times.
 """
-function numerical_range(A, thmax=20)
+function numerical_range(A::AbstractMatrix, thmax=20)
     rayleighquotient(B,x) = vecdot(x, B * x) / vecdot(x,x)
     # m,n = size(A)
     T = eltype(A)
@@ -73,6 +73,14 @@ function numrange!(ps_data::PSAStruct,thmax=20)
     end
 end
 
-function numerical_abscissa(A)
+"""
+    numerical_abscissa(A)
+
+Compute the numerical abscissa of a matrix `A`, `ω(A)`.
+
+Uses `eigvals()`. `ω(A)` provides bounds and limiting behavior for
+`norm(expm(t*A))`.
+"""
+function numerical_abscissa(A::AbstractMatrix)
     (1/2) * maximum(eigvals(A+A'))
 end
