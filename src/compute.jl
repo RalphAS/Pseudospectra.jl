@@ -39,7 +39,7 @@ a call to `schur()`); otherwise less efficient methods are used.
 - `opts::Dict{Symbol,Any}`: holding options. Keys used here are as follows:
   - `:levels::Vector{Real}` `log10(ϵ)` for the desired ϵ levels; default depends on actual levels in contour plot
   - `:recompute_levels`: automatically recompute ϵ levels? Default: true
-  - `:real_matrix`: is the original matrix real (so portrait is symmetric)? This is needed because `T` could be complex even if `A` was real. Default: true
+  - `:real_matrix`: is the original matrix real (so portrait is symmetric)? This is needed because `T` could be complex even if `A` was real. Default based on `eltype(A)`
   - `:proj_lev`: the proportion by which to extend the axes in all directions before projection. If negative, exclude subspace of eigenvalues smaller than inverse fraction. Default: ∞ (i.e., no projection)
   - `:scale_equal`: force the grid to be isotropic? Default: false
 
@@ -62,7 +62,7 @@ which reduces the matrix to a projected Hessenberg form before invoking
 - `eigAproj`:  eigenvalues projected onto
 - `algo::Symbol`: descriptor indicating which algorithm was used
 
-[^Trefethen1999] L.N.Trefethen, "Computation of pseudospectra," Acta Numerica 8, 247-295 (1999).
+[^Trefethen1999]: L.N.Trefethen, "Computation of pseudospectra," Acta Numerica 8, 247-295 (1999).
 """
 function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                      myprintln=println, mywarn=warn,
@@ -108,7 +108,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         x_npts = npts
         y_npts = npts
     end
-    if all_opts[:real_matrix] && ax[4] > 0 && ax[3] < 0
+    if get(all_opts,:real_matrix,eltype(Targ)<:Real) && ax[4] > 0 && ax[3] < 0
         y, n_mirror_pts = shift_axes(ax,y_npts)
     else
         n_mirror_pts = 0
