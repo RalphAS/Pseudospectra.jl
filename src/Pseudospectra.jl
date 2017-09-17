@@ -29,13 +29,13 @@ export modeplot, mtxexpsplot, mtxpowersplot, isheadless, iscomputed
 export PSAStruct, ArpackOptions, Portrait, GUIState
 
 # Not exported, but may be used by plotting packages:
-# vec2ax, expandlevels
-# oneeigcond, psmode_inv_lanczos, transient_bestlb
+# vec2ax, expandlevels, isvalidax
+# oneeigcond, psmode_inv_lanczos, transient_bestlb, set_method!
 
 # Associated plotting packages should provide these, specialized on their
 # own GUIState types:
 # redrawcontour, surfplot, arnoldiplotter!, ewsplotter, plotmode,
-# replzdlg, addmark,
+# replzdlg, addmark
 
 const smallσ = 1e-150
 
@@ -157,15 +157,45 @@ type PSAStruct
     unitary_mtx
     input_matrix
     input_unitary_mtx
-    matrix2
     ps_dict::Dict{Symbol,Any}
     zoom_list::Vector{Portrait}
     zoom_pos::Int
     # aside: why is there a :proj_lev entry in ps_dict?
-    function PSAStruct(m1,u1,m1i,u1i,m2,dict)
-        new(m1,u1,m1i,u1i,m2,dict,Vector{Portrait}(0),0)
+    function PSAStruct(m1,u1,m1i,u1i,dict)
+        new(m1,u1,m1i,u1i,dict,Vector{Portrait}(0),0)
     end
 end
+#=
+ A (probably incomplete) list of keys in ps_dict
+ :Aisreal
+ :isHessenberg
+ :schur_mtx
+ :schur_unitary_mtx
+ :direct
+ :ews
+ :orig_ews
+ :ew_estimates
+ :arpack_opts
+ :init_opts
+ :init_direct
+ :verbosity
+ :fov - samples of the numerical range (field of values)
+ :projection_on
+ :proj_lev
+ :proj_valid
+ :proj_ews
+ :proj_matrix - the Hessenberg matrix of coeffts from IRAM (ARPACK)
+ :proj_unitary_mtx - the Krylov basis from IRAM (ARPACK)
+ :matrix2 - second matrix (if QZ is used for rectangular A)
+
+ :proj_axes
+ :comp_proj_lev
+ :mode_markers
+
+ Used only in GUI code:
+ :zpsradius
+ :zpsabscissa
+=#
 
 # Placeholders for plot-specific code implemented elsewhere
 function redrawcontour end
@@ -173,7 +203,7 @@ function surfplot end
 function arnoldiplotter! end
 
 """
-    ewsplotter(gs::MPLGUIState, ews::Vector, zoom)
+    ewsplotter(gs::GUIState, ews::Vector, zoom)
 
 plot eigenvalues
 
@@ -188,7 +218,7 @@ function addmark end
 
 plot the evolution of `∥e^(tA)∥`.
 
-This is useful for analyzing linear initial value problems `∂_t x=Ax`.
+This is useful for analyzing linear initial value problems `∂x/∂t = Ax`.
 """
 function mtxexpsplot end
 
@@ -279,8 +309,8 @@ end
 process a matrix into the auxiliary data structure used by Pseudospectra.
 
 # Options
-- `:direct::Bool`: force use of a direct algorithm for full matrix?
-- `:sparse_direct::Bool`: force use of a direct algorithm for sparse matrix?
+- `:direct::Bool`: force use of a direct algorithm?
+- `:keep_sparse::Bool`: use sparse matrix code even if `A` is not large?
 - `:real_matrix::Bool`: treat `A` as unitarily equivalent to a real matrix?
 - `:verbosity::Int`: obvious
 - `:eigA`: eigenvalues of `A`, if already known
@@ -312,14 +342,13 @@ function new_matrix(A::AbstractMatrix,
 
     verbosity = get(opts,:verbosity,1)
 
+    convert2full = issparse(A) & (n <= nmax4autofull) &
+        !get(opts,:keep_sparse,false)
     if haskey(opts,:direct)
         direct = opts[:direct]
-        (verbosity > 0) && println("opts specifies direct = $direct")
-        convert2full = false
     else
         if issparse(A)
-            convert2full = (n <= nmax4autofull) && !get(opts,:sparse_direct,false)
-            direct = get(opts,:sparse_direct,false) || convert2full
+            direct = convert2full
         else
             direct = (n <= nmin4autoiter)
             if (verbosity > 0) && (n > nmin4autoiter)
@@ -345,6 +374,7 @@ function new_matrix(A::AbstractMatrix,
     local Tschur, U
     haveschur = false
     if Aissquare && !issparse(A) && direct
+        # if small, delay is negligible
         (verbosity > 1) && (m > 100) &&
             println("Attempting initial decomposition...")
         # If square, dense, & direct, we prefer a Schur factorization.
@@ -368,12 +398,13 @@ function new_matrix(A::AbstractMatrix,
                 eigA = eigvals(A)
             catch JE
                 isa(JE,MethodError) || rethrow(JE)
-                # FIXME: allow algorithmic errors too; what are they?
+                # ME: maybe trap algorithmic errors too; what are they?
 
-                # warning is needed here since we need axes in this case
+                # Warning is needed here since it explains why we need axes
+                # for the driver.
                 warn("Failed to compute eigenvalues; proceeding without.")
                 if verbosity > 0
-                    # if we display(JE) we get the whole damn matrix too
+                    # If we display(JE) we get the whole damn matrix too
                     println("Exception was method error: ",JE.f,
                             " for ",typeof(A))
                 end
@@ -384,26 +415,26 @@ function new_matrix(A::AbstractMatrix,
     if haveschur
         ps_dict = Dict{Symbol,Any}(:Aisreal => Aisreal,
                                    :isHessenberg => AisHess,
-                                   :sparse_direct => false,
                                    :schur_mtx => Tschur,
                                    :schur_unitary_mtx => U,
+                                   :direct => true,
                                    :projection_on => true,
                                    :proj_lev => proj_lev,
                                    :ews => eigA)
         ps_data = PSAStruct(UpperTriangular(Tschur), input_unitary_mtx * U,
-                            A, input_unitary_mtx, I, ps_dict)
+                            A, input_unitary_mtx, ps_dict)
 
     elseif issparse(A) || AisHess || !direct || Aissquare
         # sparse, Hessenberg, iterative, or needing special handling
-        forcedirect = (get(opts,:sparse_direct,false) || Aissquare)
-
+        # CHECKME: previously seemed to force
+        #   direct |= Aissquare
+        #
         ps_dict = Dict{Symbol,Any}(:Aisreal => Aisreal,
                                    :isHessenberg => AisHess,
-                                   :sparse_direct => forcedirect,
                                    :projection_on => false,
                                    :proj_lev => Inf,
                                    :ews => eigA)
-        ps_data = PSAStruct(A, input_unitary_mtx, A, input_unitary_mtx, I,
+        ps_data = PSAStruct(A, input_unitary_mtx, A, input_unitary_mtx,
                             ps_dict)
         if !direct
             if !haskey(opts,:arpack_opts)
@@ -418,27 +449,29 @@ function new_matrix(A::AbstractMatrix,
         elseif issparse(A) && convert2full
             (verbosity > 0) &&
                 println("converting to full for direct computation")
-            Atmp = ps_data.matrix
-            # FIXME: handle cases where this fails
-            F  = schurfact(full(Atmp)+complex(eltype(Atmp))(0))
-            ps_dict[:schur_mtx] = F[:T]
-            ps_dict[:schur_unitary_mtx] = F[:Z]
-            ps_data.matrix = UpperTriangular(F[:T])
-            ps_data.unitary_mtx = ps_data.input_unitary_mtx * F[:T]
-            ps_dict[:sparse_direct] = false
-            ps_dict[:projection_on] = true
-            ps_dict[:ews] = F[:values]
-            ps_dict[:orig_ews] = copy(F[:values])
+            Atmp = full(ps_data.matrix)
+            try
+                F  = schurfact(Atmp+complex(eltype(Atmp))(0))
+                ps_dict[:schur_mtx] = F[:T]
+                ps_dict[:schur_unitary_mtx] = F[:Z]
+                ps_data.matrix = UpperTriangular(F[:T])
+                ps_data.unitary_mtx = ps_data.input_unitary_mtx * F[:T]
+                ps_dict[:projection_on] = true
+                ps_dict[:ews] = F[:values]
+                ps_dict[:orig_ews] = copy(F[:values])
+            catch
+                ps_data.matrix = Atmp
+            end
         end
     else # dense, non-square (but not Hessenberg), and direct
         rfS,rfT = rect_fact(A)
         ps_dict = Dict{Symbol,Any}(:Aisreal => Aisreal,
                                    :isHessenberg => false,
-                                   :sparse_direct => false,
                                    :projection_on => false,
                                    :proj_lev => Inf,
+                                   :matrix2 => rfT,
                                    :ews => eigA)
-        ps_data = PSAStruct(rfS,input_unitary_mtx,A,input_unitary_mtx,rfT,
+        ps_data = PSAStruct(rfS,input_unitary_mtx,A,input_unitary_mtx,
                             ps_dict)
     end
     ps_dict[:orig_ews] = eigA
@@ -493,11 +526,10 @@ function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
 
     ps_dict = Dict{Symbol,Any}(:Aisreal => Aisreal,
                                    :isHessenberg => false,
-                                   :sparse_direct => false,
                                    :projection_on => false,
                                    :proj_lev => Inf,
                                    :ews => eigA)
-    ps_data = PSAStruct(A, input_unitary_mtx, A, input_unitary_mtx, I,
+    ps_data = PSAStruct(A, input_unitary_mtx, A, input_unitary_mtx,
                         ps_dict)
     if !haskey(opts,:arpack_opts)
         warn("setting default ARPACK options")
@@ -529,6 +561,9 @@ function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     return ps_data
 end
 
+# for verifying that tests cover intended cases
+const logging_algo = Ref{Bool}(false)
+
 """
     driver!(ps_data, opts, gs)
 
@@ -552,7 +587,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
     if ps_dict[:direct] || get(ps_dict,:proj_valid,false)
         n,m = size(ps_data.matrix)
         A = ps_data.matrix
-        B = ps_data.matrix2
+        B = get(ps_dict,:matrix2,I)
         eigA = ps_dict[:ews]
         zoom = ps_data.zoom_list[ps_data.zoom_pos]
 
@@ -562,6 +597,19 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
             if !isheadless(gs)
                 # show eigenvalues while waiting
                 ewsplotter(gs, eigA, zoom)
+            end
+        else
+            if haskey(opts,:ax)
+                if isvalidax(opts[:ax])
+                    zoom.ax = opts[:ax]
+                else
+                    mywarn("opts[:ax] is not a valid bounding box")
+                    return nothing
+                end
+            end
+            if isempty(zoom.ax)
+                mywarn("bounding box must be specified")
+                return nothing
             end
         end
 
@@ -575,6 +623,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
         Z,x,y,t_levels,err,Tproj,eigAproj,algo = psa_compute(A,zoom.npts,
                                                              zoom.ax,
                                                              eigA,psa_opts,
+                                                             B,
                                                         myprintln=myprintln,
                                                         mywarn=mywarn)
 
@@ -582,12 +631,12 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
         ps_dict[:proj_ews] = eigAproj
 
         if err != 0
-            warn("PSA computation failed")
+            mywarn("PSA computation failed")
             # FIXME: reset GUI if any
             return nothing
         end
 
-        (verbosity > 1) && println("algorithm: ",algo)
+        (logging_algo[] | (verbosity > 1)) && println("algorithm: ",algo)
         zoom = ps_data.zoom_list[ps_data.zoom_pos]
         if zoom.autolev
             (verbosity > 1) && println("levels: $t_levels")
@@ -623,7 +672,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
                                                       options=opts)
             catch JE
             # FIXME: post a dialog, reset GUI if any
-                warn("eigs failed")
+                warn("xeigs throws:")
                 display(JE)
                 println()
                 stuff = (:failure,nothing)
@@ -658,6 +707,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
             end
         end
         if xeigs_result[1] == :failure
+            mywarn("xeigs failed")
             return nothing
         end
         the_key,ews,v,nconv,niter,nmult,resid,H,V = xeigs_result
@@ -683,13 +733,15 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
         # reset zoom list
         ps_data.zoom_pos = 1
         deleteat!(ps_data.zoom_list,2:length(ps_data.zoom_list))
-        # CHECKME: do we need remove()?
+        # CHECKME: do we need remove() here?
         ps_dict[:mode_markers] = []
         zoom = ps_data.zoom_list[1]
-        origax = ps_dict[:init_opts].ax
-        if !isempty(origax) # && !ps_dict[:init_direct]
+        origax = ps_dict[:init_opts].ax # init_opts is a Portrait!
+        if !isempty(origax) && isvalidax(origax) # && !ps_dict[:init_direct]
             copy!(zoom.ax,origax)
-            # FIXME: needs correct validity check
+        else
+            # CHECKME: maybe use init_ews if available?
+            zoom.ax = vec2ax(ews)
 #        elseif gs.mainph != nothing
 #            println("using eigvals for axis limits")
 #            copy!(zoom.ax,getxylims(gs.mainph))
@@ -699,8 +751,8 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
 
         delete!(ps_dict,:proj_axes)
         delete!(ps_dict,:comp_proj_lev)
-        origplot!(ps_data,opts,gs) # WARNING: reentrant
-        # TODO: reset GUI
+        origplot!(ps_data,opts,gs) # WARNING: reenters driver!()
+        # caller must reset GUI if appropriate
     end
     nothing
 end
@@ -729,6 +781,37 @@ function origplot!(ps_data::PSAStruct, opts, gs; ax_only = false)
     nothing
 end
 
+"""
+possibly change from direct to iterative method or vice versa
+"""
+function set_method!(ps_data::PSAStruct, todirect::Bool)
+    # this is the part of switch_method which pertains to ps_data
+    ps_dict = ps_data.ps_dict
+    (todirect == ps_dict[:direct]) && return
+    m,n = size(ps_data.input_matrix)
+    if todirect
+        if haskey(ps_dict,:schur_matrix)
+            ps_data.matrix = ps_dict[:schur_matrix]
+            ps_data.ews = ps_dict[:orig_ews]
+            ps_dict[:ew_estimates] = false
+        elseif m==n && issparse(ps_data.input_matrix)
+            ps_data.matrix = ps_data.input_matrix
+        end
+        if haskey(ps_dict,:schur_unitary_mtx)
+            ps_data.unitary_mtx  = ps_data.input_unitary_mtx *
+                ps_data.schur_unitary_mtx
+        else
+            ps_data.unitary_mtx = ps_data.input_unitary_mtx
+        end
+        ps_dict[:proj_valid] = false
+        # if reverting to a square matrix, no longer have ARPACK projection
+        ss = size(ps_data.matrix)
+        (ss[1]==ss[2]) && (ps_dict[:isHessenberg] = false)
+    else # switch to iterative
+        (m == n) || throw(ArgumentError(""))
+    end
+    ps_dict[:direct] = todirect
+end
 
 ################################################################
 # FIXME: until we think of a better way to handle this:

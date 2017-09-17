@@ -37,6 +37,11 @@ function prettytime(ttime)
     return total_time,str
 end
 
+isvalidax(ax) = false
+function isvalidax{T<:Real}(ax::Vector{T})
+    (length(ax) == 4) && (ax[1] < ax[2]) && (ax[3] < ax[4])
+end
+
 """
 construct a mesh for the imaginary axis to exploit symmetry
 
