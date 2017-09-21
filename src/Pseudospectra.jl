@@ -149,6 +149,21 @@ type ArpackOptions{T}
     end
 end
 
+function Base.:(==){T,S}(l::ArpackOptions{T},r::ArpackOptions{S})
+    l === r && return true
+    for f in fieldnames(ArpackOptions)
+        (getfield(l,f) == getfield(r,f)) || return false
+    end
+    true
+end
+function Base.hash{T}(l::ArpackOptions{T},h::UInt)
+    h1 = hash(:ArpackOptions,h)
+    for f in fieldnames(ArpackOptions)
+        h1 = hash(getfield(l,f),h1)
+    end
+    h1
+end
+
 """
 Wrapper structure for Pseudospectra session data
 """
@@ -188,6 +203,7 @@ end
  :proj_unitary_mtx - the Krylov basis from IRAM (ARPACK)
  :matrix2 - second matrix (if QZ is used for rectangular A)
 
+ :reentering - flag for logic (not in EigTool)
  :proj_axes
  :comp_proj_lev
  :mode_markers
@@ -565,7 +581,7 @@ end
 const logging_algo = Ref{Bool}(false)
 
 """
-    driver!(ps_data, opts, gs)
+    driver!(ps_data, opts, gs; revise_method=false)
 
 Compute pseudospectra and plot a spectral portrait.
 
@@ -576,41 +592,74 @@ that first.
 - `ps_data::PSAStruct`: ingested matrix, as processed by `new_matrix`
 - `gs::GUIState`: object handling graphical output
 - `opts::Dict{Symbol,Any}`: options passed to `redrawcontour`, `arnoldiplotter!`
-Other options are already stored in `ps_data`.
+
+For a revised spectral portrait, the following entries in `opts` also apply:
+  - `:ax`, (overrides value stored in `ps_data`).
+  - `:arpack_opts` and `:direct`, used only if `revise_method==true`.
 """
-function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
-                 gs::GUIState; myprintln=println, mywarn=warn)
+function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
+                 myprintln=println, mywarn=warn, revise_method=false)
     # DEVNOTE: mostly corresponds to switch_redraw.m in EigTool
     opts = fillopts(gs,optsin)
     ps_dict = ps_data.ps_dict
     verbosity = get(ps_dict,:verbosity,1)
+
+    # For changing from direct to iterative, or vice versa,
+    if revise_method & haskey(opts,:direct)
+        set_method!(ps_data, opts[:direct])
+    end
+
+    if revise_method & haskey(opts,:arpack_opts) & !ps_dict[:direct]
+        ao = opts[:arpack_opts]
+        if !isa(ao,ArpackOptions)
+            mywarn("invalid :arpack_opts option")
+            return nothing
+        end
+        if haskey(ps_dict,:arpack_opts)
+            pvalid = (ao == ps_dict[:arpack_opts])
+        else
+            pvalid = false
+        end
+        ps_dict[:proj_valid] = pvalid
+        ps_dict[:arpack_opts] = ao
+    end
+
+    # if caller specifies ax, use it or bust.
+    if haskey(opts,:ax)
+        if isvalidax(opts[:ax])
+            new_ax = opts[:ax]
+        else
+            mywarn("opts[:ax] is not a valid bounding box")
+            return nothing
+        end
+    else
+        new_ax = zeros(0)
+    end
+
     if ps_dict[:direct] || get(ps_dict,:proj_valid,false)
+        # for iterative methods, we get here on reentrance with the projection
         n,m = size(ps_data.matrix)
         A = ps_data.matrix
         B = get(ps_dict,:matrix2,I)
         eigA = ps_dict[:ews]
         zoom = ps_data.zoom_list[ps_data.zoom_pos]
 
-        if !isempty(eigA)
-            # This sets the default domain for the typical case
-            isempty(zoom.ax) && (zoom.ax = vec2ax(eigA))
-            if !isheadless(gs)
-                # show eigenvalues while waiting
-                ewsplotter(gs, eigA, zoom)
-            end
-        else
-            if haskey(opts,:ax)
-                if isvalidax(opts[:ax])
-                    zoom.ax = opts[:ax]
-                else
-                    mywarn("opts[:ax] is not a valid bounding box")
+        if isempty(new_ax)
+            if !isempty(eigA)
+                # This sets the default domain for the typical case
+                isempty(zoom.ax) && (zoom.ax = vec2ax(eigA))
+                if !isheadless(gs)
+                    # show eigenvalues while waiting
+                    ewsplotter(gs, eigA, zoom)
+                end
+            else
+                if isempty(zoom.ax)
+                    mywarn("bounding box must be specified")
                     return nothing
                 end
             end
-            if isempty(zoom.ax)
-                mywarn("bounding box must be specified")
-                return nothing
-            end
+        else
+            zoom.ax = new_ax
         end
 
         psa_opts = Dict{Symbol,Any}(:levels=>expandlevels(zoom.levels),
@@ -657,6 +706,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
 
         ps_data.matrix = ps_data.input_matrix
         m,n = size(ps_data.matrix)
+
         ao = ps_dict[:arpack_opts]
 
         function xeigsproducer(chnl)
@@ -736,15 +786,20 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any},
         # CHECKME: do we need remove() here?
         ps_dict[:mode_markers] = []
         zoom = ps_data.zoom_list[1]
-        origax = ps_dict[:init_opts].ax # init_opts is a Portrait!
-        if !isempty(origax) && isvalidax(origax) # && !ps_dict[:init_direct]
-            copy!(zoom.ax,origax)
+
+        if isempty(new_ax)
+            origax = ps_dict[:init_opts].ax # init_opts is a Portrait!
+            if !isempty(origax) && isvalidax(origax) # && !ps_dict[:init_direct]
+                copy!(zoom.ax,origax)
+            else
+                # CHECKME: maybe use init_ews if available?
+                zoom.ax = vec2ax(ews)
+          # elseif gs.mainph != nothing
+          #    println("using eigvals for axis limits")
+          #    copy!(zoom.ax,getxylims(gs.mainph))
+            end
         else
-            # CHECKME: maybe use init_ews if available?
-            zoom.ax = vec2ax(ews)
-#        elseif gs.mainph != nothing
-#            println("using eigvals for axis limits")
-#            copy!(zoom.ax,getxylims(gs.mainph))
+            zoom.ax = new_ax
         end
         zoom.autolev = ps_dict[:init_opts].autolev
         zoom.levels = deepcopy(ps_dict[:init_opts].levels)
@@ -762,8 +817,9 @@ function iscomputed(ps_data::PSAStruct, idx=ps_data.zoom_pos)
 end
 
 """
-called for a new matrix. Makes sure zoom list is ok, then redraws (unless
-`ax_only`).
+Make sure zoom list is ok, then redraw (unless `ax_only`).
+
+Note: truncates zoom list, so use for a new problem or for a reset.
 """
 function origplot!(ps_data::PSAStruct, opts, gs; ax_only = false)
     ps_data.zoom_pos = 1
@@ -808,7 +864,9 @@ function set_method!(ps_data::PSAStruct, todirect::Bool)
         ss = size(ps_data.matrix)
         (ss[1]==ss[2]) && (ps_dict[:isHessenberg] = false)
     else # switch to iterative
-        (m == n) || throw(ArgumentError(""))
+        (m == n) || throw(ArgumentError("Iterative method not implemented "
+                                        * "for rectangular matrices"))
+        # apparently that's all we need for now
     end
     ps_dict[:direct] = todirect
 end
