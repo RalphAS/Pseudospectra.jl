@@ -52,166 +52,7 @@ const nmin4autoiter = 1600
 
 const myname = "PSA"
 
-"""
-object to hold state for the GUI used by Pseudospectra
-"""
-@compat abstract type GUIState end
-
-type LevelDesc
-    isunif::Bool
-    full_levels
-    first
-    step
-    last
-    function LevelDesc(levs)
-        if isa(levs,Range)
-            levels = collect(levs)
-        elseif isa(levs,Vector) && (eltype(levs) <: Real)
-            levels = levs
-        else
-            throw(ArgumentError("level specification must be a range or real vector"))
-        end
-        isunif = ((length(levels) == 2)
-                  || ((length(levels) > 2)
-                      && (maximum(abs.(diff(diff(levels)))) < 10*eps())))
-        if isunif
-            first = levels[1]
-            step = levels[2]-levels[1]
-            last = levels[end]
-            full_levels = nothing
-        else
-            full_levels = copy(levels)
-            first = nothing; step = nothing; last = nothing
-        end
-        new(isunif,full_levels,first,step,last)
-    end
-end
-
-"""
-    Portrait
-
-structure representing a spectral portrait; includes a mesh for `z=x+iy`,
-values of the resolvent norm on the mesh, suitable contour levels,
-and some other metadata.
-"""
-type Portrait
-    x::Vector
-    y::Vector
-    Z::Matrix
-    npts::Int
-    ax::Vector
-    levels::LevelDesc
-    autolev::Bool
-    proj_lev
-    dims
-    computed::Bool
-    scale_equal::Bool
-end
-
-import Base: show
-
-function show(io::IO,z::Portrait)
-    k = isempty(z.Z) ? "missing" : "present"
-    print(io,"npts: $(z.npts), ax: $(z.ax), autolev: $(z.autolev), "
-          * "computed: $(z.computed), data $k, proj $(z.proj_lev), "
-          * "scale_eq: $(z.scale_equal)")
-    println()
-    print(io,"levels: $(z.levels)")
-end
-
-"""
-    ArpackOptions{T}(; nev=6, ncv=0, which=:LM,
-                                           tol=zero(T),maxiter=300,
-                                           v0=Vector{T}(0), have_v0=false,
-                                           sigma=nothing)
-
-constructs an object to manage the Arnoldi scheme; see `eigs` for the
-meaning of fields.
-"""
-type ArpackOptions{T}
-    # Control of iterative computations:
-    nev::Int # nr. of eigenvalues for eigs() to search for
-    ncv::Int # max. subspace size for eigs()
-    which::Symbol # as for eigs()
-    tol::Real # tolerance for eigs()
-    maxiter::Int # bound for eigs()
-    v0::Vector # initial Ritz vector for eigs()
-    sigma # shift parameter for eigs()
-
-    function (::Type{ArpackOptions{T}}){T}(; nev=6, ncv=0, which=:LM,
-                                           tol=zero(T),maxiter=300,
-                                           v0=Vector{T}(0),
-                                           sigma=nothing)
-        if ncv==0
-            ncv = max(20,2*nev+1)
-        end
-        new{T}(nev,ncv,which,tol,maxiter,v0,sigma)
-    end
-end
-
-function Base.:(==){T,S}(l::ArpackOptions{T},r::ArpackOptions{S})
-    l === r && return true
-    for f in fieldnames(ArpackOptions)
-        (getfield(l,f) == getfield(r,f)) || return false
-    end
-    true
-end
-function Base.hash{T}(l::ArpackOptions{T},h::UInt)
-    h1 = hash(:ArpackOptions,h)
-    for f in fieldnames(ArpackOptions)
-        h1 = hash(getfield(l,f),h1)
-    end
-    h1
-end
-
-"""
-Wrapper structure for Pseudospectra session data
-"""
-type PSAStruct
-    matrix
-    unitary_mtx
-    input_matrix
-    input_unitary_mtx
-    ps_dict::Dict{Symbol,Any}
-    zoom_list::Vector{Portrait}
-    zoom_pos::Int
-    # aside: why is there a :proj_lev entry in ps_dict?
-    function PSAStruct(m1,u1,m1i,u1i,dict)
-        new(m1,u1,m1i,u1i,dict,Vector{Portrait}(0),0)
-    end
-end
-#=
- A (probably incomplete) list of keys in ps_dict
- :Aisreal
- :isHessenberg
- :schur_mtx
- :schur_unitary_mtx
- :direct
- :ews
- :orig_ews
- :ew_estimates
- :arpack_opts
- :init_opts
- :init_direct
- :verbosity
- :fov - samples of the numerical range (field of values)
- :projection_on
- :proj_lev
- :proj_valid
- :proj_ews
- :proj_matrix - the Hessenberg matrix of coeffts from IRAM (ARPACK)
- :proj_unitary_mtx - the Krylov basis from IRAM (ARPACK)
- :matrix2 - second matrix (if QZ is used for rectangular A)
-
- :reentering - flag for logic (not in EigTool)
- :proj_axes
- :comp_proj_lev
- :mode_markers
-
- Used only in GUI code:
- :zpsradius
- :zpsabscissa
-=#
+include("types.jl")
 
 # Placeholders for plot-specific code implemented elsewhere
 function redrawcontour end
@@ -258,66 +99,6 @@ include("radius.jl")
 include("numrange.jl")
 include("transients.jl")
 include("plotter.jl")
-
-"""
-    recalc_levels(σ, ax)
-
-construct a reasonable set of contour levels for displaying `log10(σ)`
-where `σ` is a meshed field on axes `ax`.
-"""
-function recalc_levels(sigmin,ax)
-    err = 0
-    smin,smax = extrema(sigmin)
-    if smax <= smallσ
-        levels = Vector{typeof(smin)}(0)
-        err = -2
-        return levels,err
-    end
-    if smin <= smallσ
-        smin=minimum(sigmin[sigmin .>= smallσ])
-    end
-    max_val = log10(smax)
-    min_val = log10(smin)
-    num_lines = 8
-    scale = min(ax[4]-ax[3],ax[2]-ax[1])
-    last_lev = log10(0.03*scale)
-    if max_val >= last_lev
-        num_lines = ceil(Int,num_lines*(last_lev-min_val)/(max_val-min_val))
-        max_val = last_lev
-    end
-    if max_val < min_val
-        max_val = log10(smin) + 0.1*log10(smax/smin)
-        num_lines = 3
-    end
-    max_lines = num_lines
-    if num_lines > 0
-        stepsize = max(round((max_val-min_val)/num_lines*4)/4,0.25)
-        (stepsize >= 0.75) && (stepsize = 1.0)
-        if (max_val - min_val)/stepsize < max_lines
-            stepsize = max(round((max_val-min_val)/num_lines*10)/10,0.1)
-            (stepsize == 0.3) && (stepsize = 0.2)
-            (stepsize == 0.4) && (stepsize = 0.5)
-            ((stepsize >= 0.6) && (stepsize <= 0.8)) && (stepsize = 0.5)
-            (stepsize >= 0.9) && (stepsize = 1.0)
-        end
-        if (max_val - min_val)/stepsize < ceil(max_lines/2)
-            stepsize = (max_val - min_val) / max_lines
-        else
-            min_val = ceil(min_val/stepsize) * stepsize
-            max_val = floor(max_val/stepsize) * stepsize
-        end
-        if stepsize > 0
-            levels = collect(min_val:stepsize:max_val)
-        else
-            levels = [min_val,max_val]
-        end
-    end
-    ll = length(levels)
-    levels = flipdim(levels[end:-max(floor(Int,ll/9),1):1],1)
-    (length(levels) == 1) && (levels = levels .* ones(2))
-    # upstream has commented-out normality message logic here
-    return levels,err
-end
 
 """
     new_matrix(A::AbstractMatrix, opts::Dict{Symbol,Any}=()) -> ps_data
@@ -525,8 +306,11 @@ process a linear operator object into the auxiliary data structure used by
 Pseudospectra.
 
 There must be methods with `A` for `eltype`, `size`, and `A_mul_B!`.
+It is up to the user to make sure that `A_mul_B!` is consistent with any
+options passed to the iterative solver (see documentation for [`eigs`](@ref)).
 """
 function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
+    # CHECKME: can A be anything other than a LinearMap here?
     m,n=size(A)
     (m == n) || throw(ArgumentError(
         "Only square linear operators are supported."))
@@ -585,17 +369,19 @@ const logging_algo = Ref{Bool}(false)
 
 Compute pseudospectra and plot a spectral portrait.
 
-If using an iterative method to get eigenvalues and projection, invoke
+If using an iterative method to get some eigenvalues and a projection, invokes
 that first.
 
 # Arguments
 - `ps_data::PSAStruct`: ingested matrix, as processed by `new_matrix`
 - `gs::GUIState`: object handling graphical output
 - `opts::Dict{Symbol,Any}`: options passed to `redrawcontour`, `arnoldiplotter!`
+  - `:ax`, axis limits (overrides value stored in `ps_data`).
 
-For a revised spectral portrait, the following entries in `opts` also apply:
-  - `:ax`, (overrides value stored in `ps_data`).
-  - `:arpack_opts` and `:direct`, used only if `revise_method==true`.
+When revising a spectral portrait (`revise_method==true`), the following
+entries in `opts` also apply:
+ - `:arpack_opts::ArpackOptions`,
+ - `:direct::Bool`.
 """
 function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
                  myprintln=println, mywarn=warn, revise_method=false)
@@ -748,7 +534,8 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
         while xeigs_result[1] ∉ [:finale,:failure]
             the_key,dispvec,the_str,the_ews,the_shifts = xeigs_result
             if !isheadless(gs)
-                arnoldiplotter!(gs,old_ax,opts,dispvec,the_str,the_ews,the_shifts)
+                arnoldiplotter!(gs,old_ax,opts,dispvec,the_str,the_ews,
+                                the_shifts)
             end # if gs
             if VERSION >= v"0.6-"
                 xeigs_result = take!(chnl)
@@ -762,7 +549,8 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
         end
         the_key,ews,v,nconv,niter,nmult,resid,H,V = xeigs_result
         if verbosity > 0
-            println("xeigs: $nconv of $(ao.nev) converged in $niter ($nmult MxV)")
+            println("xeigs: $nconv of $(ao.nev) converged in $niter "
+                    * "($nmult MxV)")
         end
         if verbosity > 1
             println("xeigs ews:")

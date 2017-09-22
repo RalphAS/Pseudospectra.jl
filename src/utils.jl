@@ -11,6 +11,66 @@ of the University of Oxford, and the EigTool Developers. All rights reserved.
 =#
 
 """
+    recalc_levels(σ, ax)
+
+construct a reasonable set of contour levels for displaying `log10(σ)`
+where `σ` is a meshed field on axes `ax`.
+"""
+function recalc_levels(sigmin,ax)
+    err = 0
+    smin,smax = extrema(sigmin)
+    if smax <= smallσ
+        levels = Vector{typeof(smin)}(0)
+        err = -2
+        return levels,err
+    end
+    if smin <= smallσ
+        smin=minimum(sigmin[sigmin .>= smallσ])
+    end
+    max_val = log10(smax)
+    min_val = log10(smin)
+    num_lines = 8
+    scale = min(ax[4]-ax[3],ax[2]-ax[1])
+    last_lev = log10(0.03*scale)
+    if max_val >= last_lev
+        num_lines = ceil(Int,num_lines*(last_lev-min_val)/(max_val-min_val))
+        max_val = last_lev
+    end
+    if max_val < min_val
+        max_val = log10(smin) + 0.1*log10(smax/smin)
+        num_lines = 3
+    end
+    max_lines = num_lines
+    if num_lines > 0
+        stepsize = max(round((max_val-min_val)/num_lines*4)/4,0.25)
+        (stepsize >= 0.75) && (stepsize = 1.0)
+        if (max_val - min_val)/stepsize < max_lines
+            stepsize = max(round((max_val-min_val)/num_lines*10)/10,0.1)
+            (stepsize == 0.3) && (stepsize = 0.2)
+            (stepsize == 0.4) && (stepsize = 0.5)
+            ((stepsize >= 0.6) && (stepsize <= 0.8)) && (stepsize = 0.5)
+            (stepsize >= 0.9) && (stepsize = 1.0)
+        end
+        if (max_val - min_val)/stepsize < ceil(max_lines/2)
+            stepsize = (max_val - min_val) / max_lines
+        else
+            min_val = ceil(min_val/stepsize) * stepsize
+            max_val = floor(max_val/stepsize) * stepsize
+        end
+        if stepsize > 0
+            levels = collect(min_val:stepsize:max_val)
+        else
+            levels = [min_val,max_val]
+        end
+    end
+    ll = length(levels)
+    levels = flipdim(levels[end:-max(floor(Int,ll/9),1):1],1)
+    (length(levels) == 1) && (levels = levels .* ones(2))
+    # upstream has commented-out normality message logic here
+    return levels,err
+end
+
+"""
 determine a grid size which will result in a quick computation
 """
 function setgridsize(n,nmin,nmax,iscplx)
@@ -138,7 +198,9 @@ function vec2ax(dispvec)
 end
 
 """
-compute triangular factor(s) for a non-square matrix
+Compute triangular factor(s) for a non-square matrix.
+
+As used to prepare for pseudospectra computation.
 """
 function rect_fact(A)
     m,n = size(A)
