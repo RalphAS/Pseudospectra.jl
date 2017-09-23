@@ -60,9 +60,8 @@ function show(io::IO,z::Portrait)
     k = isempty(z.Z) ? "missing" : "present"
     print(io,"npts: $(z.npts), ax: $(z.ax), autolev: $(z.autolev), "
           * "computed: $(z.computed), data $k, proj $(z.proj_lev), "
-          * "scale_eq: $(z.scale_equal)")
-    println()
-    print(io,"levels: $(z.levels)")
+          * "scale_eq: $(z.scale_equal)\n",
+          "levels: $(z.levels)")
 end
 
 """

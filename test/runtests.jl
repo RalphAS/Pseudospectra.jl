@@ -5,9 +5,17 @@
 
 using Pseudospectra, Base.Test
 
+if VERSION < v"0.6-"
+    macro test_warn(msg, expr)
+        quote
+            $(esc(expr))
+        end
+    end
+end
+
 tests = ["basic","arpack1","medcplx","medrect","smrect","spdirect",
           "projection_and_transient","radius_abscissa","negproj","eigsnoconv",
-          "numrange", "linmap", "big", "power_transient", "swmethod"
+          "numrange", "linmap", "big", "power_transient", "swmethod", "zoom"
           ]
 
 if length(ARGS) > 0

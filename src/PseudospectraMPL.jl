@@ -16,12 +16,13 @@ module PseudospectraMPL
 using PyPlot
 using Pseudospectra
 
-export MPLGUIState, psa, psasimple
+export MPLGUIState, psa
 
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
 import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
 import Pseudospectra: mtxexpsplot, mtxpowersplot
+import Pseudospectra: zoomin!, zoomout!
 
 # we use these internals here:
 import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
@@ -505,6 +506,53 @@ function mtxexpsplot(gs::MPLGUIState,ps_data::PSAStruct,dt=0.1,nmax=50;
     end
 end
 
+function zoomin!(gs::MPLGUIState, ps_data::PSAStruct,
+                 optsin=Dict{Symbol,Any}(); zkw=zeros(0))
+    opts = fillopts(gs,optsin)
+    if isempty(zkw)
+        # User might get z from some other figure, but so what?
+        z = replzdlg(gs)
+    else
+        z = zkw
+    end
+    figure(gs.mainfignum)
+    ax = getxylims(gs.mainph)
+    res = zoomin!(ps_data,z,ax)
+    if res < 0
+        warn("unable to zoom based on requested point")
+    elseif res == 0
+        # redraw existing portrait
+        redrawcontour(gs, ps_data, opts)
+    else
+        # compute and draw new portrait
+        driver!(ps_data, opts, gs)
+    end
+    res
+end
+
+function zoomout!(gs::MPLGUIState, ps_data::PSAStruct,
+                 optsin=Dict{Symbol,Any}(); include_fov=false, zkw=zeros(0))
+    opts = fillopts(gs,optsin)
+    if isempty(zkw)
+        z = replzdlg(gs)
+    else
+        z = zkw
+    end
+    figure(gs.mainfignum)
+    ax = getxylims(gs.mainph); # current plot axes
+    res = zoomout!(ps_data,z,ax,include_fov=include_fov)
+    if res < 0
+        warn("unable to zoom based on requested point")
+    elseif res == 0
+        # redraw existing portrait
+        redrawcontour(gs, ps_data, opts)
+    else
+        # compute and draw new portrait
+        driver!(ps_data, opts, gs)
+    end
+    res
+end
+
 ################################################################
 # Wrappers
 
@@ -527,10 +575,12 @@ end
 # Utilities
 
 function setxylims!(ph,ax)
+    # FIXME: this should insure reference to ph
     axis(ax)
 end
 
 function getxylims(ph)
+    # FIXME: this should insure reference to ph
     collect(axis())
 end
 

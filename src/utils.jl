@@ -241,7 +241,7 @@ tidy up axis limits
 
 rounds [vmin,vmax] outward to have cleaner decimal expressions
 """
-function tidyaxes(vmin,vmax,tol)
+function tidyaxes(vmin::Number,vmax::Number,tol)
     span = vmax - vmin
     round_to = span * tol
     lround_to = log10(round_to)

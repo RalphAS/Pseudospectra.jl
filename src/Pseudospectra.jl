@@ -28,6 +28,9 @@ export numerical_range, numerical_abscissa
 export modeplot, mtxexpsplot, mtxpowersplot, isheadless, iscomputed
 export PSAStruct, ArpackOptions, Portrait, GUIState
 
+# Plotting packages should probably extend these:
+export zoomin!, zoomout!
+
 # Not exported, but may be used by plotting packages:
 # vec2ax, expandlevels, isvalidax
 # oneeigcond, psmode_inv_lanczos, transient_bestlb, set_method!
@@ -99,6 +102,7 @@ include("radius.jl")
 include("numrange.jl")
 include("transients.jl")
 include("plotter.jl")
+include("zooming.jl")
 
 """
     new_matrix(A::AbstractMatrix, opts::Dict{Symbol,Any}=()) -> ps_data
@@ -570,7 +574,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
         ps_dict[:ews] = ews
         # reset zoom list
         ps_data.zoom_pos = 1
-        deleteat!(ps_data.zoom_list,2:length(ps_data.zoom_list))
+        resize!(ps_data.zoom_list,1)
         # CHECKME: do we need remove() here?
         ps_dict[:mode_markers] = []
         zoom = ps_data.zoom_list[1]
@@ -604,6 +608,8 @@ function iscomputed(ps_data::PSAStruct, idx=ps_data.zoom_pos)
     ps_data.zoom_list[idx].computed
 end
 
+iscomputed(zoom::Portrait) = zoom.computed
+
 """
 Make sure zoom list is ok, then redraw (unless `ax_only`).
 
@@ -612,7 +618,7 @@ Note: truncates zoom list, so use for a new problem or for a reset.
 function origplot!(ps_data::PSAStruct, opts, gs; ax_only = false)
     ps_data.zoom_pos = 1
     ps_dict = ps_data.ps_dict
-    deleteat!(ps_data.zoom_list,2:length(ps_data.zoom_list))
+    resize!(ps_data.zoom_list,1)
     zoom = ps_data.zoom_list[1]
     if isempty(zoom.ax)
         if isempty(get(ps_dict,:ews,[]))
