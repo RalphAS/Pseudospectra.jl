@@ -1,3 +1,15 @@
+#=
+This file is part of Pseudospectra.jl.
+See LICENSE file for details.
+
+Julia translation
+copyright (c) 2017 Ralph Smith
+
+Portions derived from EigTool
+Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
+of the University of Oxford, and the EigTool Developers. All rights reserved.
+=#
+
 """
     zoomin!(ps_data,z,ax) -> Int
 
@@ -107,9 +119,11 @@ function zoomout!(ps_data::PSAStruct,z,ax; include_fov=false)
         newzoom.computed = false
         unshift!(ps_data.zoom_list, newzoom)
         zax = newzoom.ax
-        if include_fov && !isempty(ps_data.fov) && get(ps_data.ps_dict,:show_fov,false)
-            mnr,mxr = extrema(real(ps_data.fov))
-            mni,mxi = extrema(imag(ps_data.fov))
+        ps_dict = ps_data.ps_dict
+        if include_fov && !isempty(get(ps_dict,:fov,zeros(0))) &&
+              get(ps_dict,:show_fov,false)
+            mnr,mxr = extrema(real(ps_dict[:fov]))
+            mni,mxi = extrema(imag(ps_dict[:fov]))
             zoom2fov = (mnr <= zax[1]) || (mxr >= zax[2]) || (mni <= zax[3]) ||
                 (mxi >= zax[4])
         else
