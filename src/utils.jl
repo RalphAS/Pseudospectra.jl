@@ -1,6 +1,5 @@
 #=
 This file is part of Pseudospectra.jl.
-See LICENSE file for details.
 
 Julia translation
 copyright (c) 2017 Ralph Smith
@@ -8,6 +7,9 @@ copyright (c) 2017 Ralph Smith
 Portions derived from EigTool
 Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
 of the University of Oxford, and the EigTool Developers. All rights reserved.
+
+SPDX-License-Identifier: BSD-3-Clause
+License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 
 """

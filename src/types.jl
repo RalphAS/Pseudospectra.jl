@@ -1,3 +1,13 @@
+#=
+
+This file is part of Pseudospectra.jl.
+
+Copyright (c) 2017 Ralph A. Smith
+
+SPDX-License-Identifier: BSD-3-Clause
+License-Filename: LICENSES/BSD-3-Clause_Eigtool
+=#
+
 """
 object to hold state for the GUI used by Pseudospectra
 """

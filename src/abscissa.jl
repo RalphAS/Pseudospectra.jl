@@ -1,12 +1,14 @@
 #=
 This file is part of Pseudospectra.jl.
-See LICENSE file for details.
 
 Julia translation
 Copyright © 2017 Ralph Smith
 
 Portions from original MATLAB code (via EigTool)
 Copyright © 2002-2014 James Burke, Adrian Lewis, Emre Mengi and Michael Overton
+
+SPDX-License-Identifier: BSD-3-Clause
+License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 
 """

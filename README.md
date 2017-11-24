@@ -94,6 +94,5 @@ on any theory of liability, whether in contract, strict liability, or tort
 software, even if advised of the possibility of such damage.
 
 # Note on licensing
-The source files are under the BSD license, in accordance with derivation
-from EigTool, except for `xeigs.jl` which derives from Julialang code and
-is under an MIT license.
+Most of the package is under a BSD license, in accordance with derivation
+from EigTool. See individual source files for exceptions.

@@ -1,8 +1,10 @@
 #=
 plot package initialization for Pseudospectra.jl
 
-This file is part of Pseudospectra.jl, whose LICENSE file applies.
+This file is part of Pseudospectra.jl.
 
+SPDX-License-Identifier: BSD-3-Clause
+License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 export setpsplotter, setgs, isheadless
 

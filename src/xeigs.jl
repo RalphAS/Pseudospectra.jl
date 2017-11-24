@@ -1,16 +1,15 @@
 #=
 ARPACK wrapper for use in Pseudospectra.jl
 
-This file is part of Pseudospectra.jl, whose LICENSE file applies.
+This file is part of Pseudospectra.jl.
+Portions derived from the Base library of Julia.
 
-Pseudospectra.jl adaptation
 Copyright (c) 2017 Ralph A. Smith
-
-Portions derived from the Base library of Julia:
-
 Copyright (c) 2009-2016: Jeff Bezanson, Stefan Karpinski, Viral B. Shah,
  and other contributors
 
+SPDX-License-Identifier: MIT-Expat
+License-Filename: LICENSES/MIT-Expat
 =#
 
 import Base.LinAlg: BlasInt, ARPACKException, checksquare

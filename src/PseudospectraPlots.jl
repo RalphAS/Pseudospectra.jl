@@ -1,7 +1,7 @@
 #=
  Plots.jl drivers etc. for Pseudospectra.jl
 
-This file is part of Pseudospectra.jl, whose LICENSE file applies.
+This file is part of Pseudospectra.jl.
 
 Julia implementation
 Copyright (c) 2017 Ralph A. Smith
@@ -10,6 +10,9 @@ Portions derived from EigTool:
  Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
  of the University of Oxford, and the EigTool Developers. All rights reserved.
  EigTool is maintained on GitHub:  https://github.com/eigtool
+
+SPDX-License-Identifier: BSD-3-Clause
+License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraPlots
 
