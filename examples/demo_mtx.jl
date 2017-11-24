@@ -21,11 +21,11 @@ This is a popular example in the field of matrix iterations
 of a matrix whose spectrum is in the right half-plane but
 whose numerical range is not.  It's also a popular example
 in the study of nonsymmetric Toeplitz matrices.  The matrix
-was first described in [1] and its pseudospectra were first
-plotted in [2].
+was first described in [^Grcar1989] and its pseudospectra were first
+plotted in [^Trefethen1991].
 
-1. J. F. Grcar, "Operator coefficient methods for linear equations", tech. report SAND89-8691, Sandia National Labs, 1989
-2. L. N. Trefethen, "Psuedospectra of matrices", in "Numerical Analysis 1991" (Dundee 1991), Longman Sci. Tech., Harlow, 1992, 234-266.
+[^Grcar1989]: J. F. Grcar, "Operator coefficient methods for linear equations", tech. report SAND89-8691, Sandia National Labs, 1989
+[^Trefethen1991]: L. N. Trefethen, "Psuedospectra of matrices", in "Numerical Analysis 1991" (Dundee 1991), Longman Sci. Tech., Harlow, 1992, 234-266.
 """
 function grcar(N::Integer)
   G = (diagm(ones(N),0) - diagm(ones(N-1),-1) +
@@ -37,7 +37,9 @@ end
     cheb(N)
 
 construct a matrix representing differentiation of rank N+1 Chebyshev
-value-space basis, based on Trefethen's "Spectral Methods in MATLAB"
+value-space basis, based on [Trefethen2000]
+
+[^Trefethen2000] L.N.Trefethen, *Spectral Methods in MATLAB*, SIAM, Philadelphia, 2000.
 """
 function cheb(N::Integer)
     if N==0
@@ -54,7 +56,8 @@ end
 """
     advdiff(N,η=0.015)
 
-construct the matrix representing an advection-diffusion operator
+construct the matrix representing an advection-diffusion operator via
+Chebyshev collocation.
 """
 function advdiff(N,η=0.015)
     D,x = cheb(N)
@@ -76,7 +79,10 @@ end
 
 construct a matrix representing the Orr-Sommerfeld operator in the
 rank N+1 Chebyshev value-space basis.
-Note: this uses a norm of dubious worth.
+Note: this imposes a norm of dubious physical meaning, since a clever
+trick is used to suppress spurious eigenvalues.
+
+[^HS1994] W.Z.Huang and D.M.Sloan, "The pseudospectral method for solving differential eigenvalue equations," J. Comput. Phys. 111, 399-409 (1994).
 """
 function orrsommerfeld(N,R=5722,α=1.0)
     D,x = cheb(N)
@@ -96,10 +102,11 @@ end
     trefethen_tutorial(N) -> B,A
 
 compute the matrices used for tutorial purposes
-by L.N.Trefethen in "Computation of Pseudospectra",
-Acta Numerica 1999. `A` is the Chebyshev discretization
+in [^Trefethen1999]. `A` is the Chebyshev discretization
 of a Schrödinger operator with complex potential.
 `B` includes weight factors so that a basic L2 norm is appropriate.
+
+[^Trefethen1999]: L.N.Trefethen, "Computation of Pseudospectra", Acta Numerica 1999.
 """
 function trefethen_tutorial(N)
     D = zeros(N+2,N+2)
@@ -145,11 +152,11 @@ operator
          -ϵ ∇^2 u  + ∂u/∂y
 
 on the unit square with Dirichlet boundary conditions. The
-discretisation is done using finite differences (see, e.g., [1]),
+discretisation is done using finite differences (see, e.g., [^Hemmingsson1998]),
 resulting in large, sparse matrices. The code is based on a
 routine by Daniel Loghin.
 
-1. L. Hemmingsson, "A Semi-circulant Preconditioner for the Convection-Diffusion Equation", Numer. Math 81, 1998, 211-248
+[^Hemmingsson1998]: L. Hemmingsson, "A Semi-circulant Preconditioner for the Convection-Diffusion Equation", Numer. Math 81, 211-248 (1998).
 
 """
 function convdiff_fd(N)
@@ -199,17 +206,17 @@ end
 
 construct Kahan's matrix of rank N
 
-Kahan's matrix [2] was devised to illustrate that QR
+Kahan's matrix [^Kahan1966] was devised to illustrate that QR
 factorisation with column pivoting is not a fail-safe
 method for determining the rank of the matrix. Rank
 determination is related to the "distance to singularity"
-of a matrix [1], or in other words, how large a perturbation
+of a matrix [^Higham1988], or in other words, how large a perturbation
 is needed to make the matrix singular. The pseudospectra are
-shown in [3].
+shown in [^Trefethen1991].
 
-1. N. J. Higham, "Matrix nearness problems and applications", NA Rep. 161, Dept. of Maths., U. of Manchester, June 1988.
-2. W. Kahan, "Numerical linear algebra", Canad. Math. Bull. 9, pp. 757-801, 1966.
-3. L. N. Trefethen, "Psuedospectra of matrices", in "Numerical Analysis 1991" (Dundee 1991), Longman Sci. Tech., Harlow, 1992, 234-266.
+[^Higham1988]: N. J. Higham, "Matrix nearness problems and applications", NA Rep. 161, Dept. of Maths., U. of Manchester, June 1988.
+[^Kahan1966]: W. Kahan, "Numerical linear algebra", Canad. Math. Bull. 9, pp. 757-801, 1966.
+[^Trefethen1991]: L. N. Trefethen, "Psuedospectra of matrices", in "Numerical Analysis 1991" (Dundee 1991), Longman Sci. Tech., Harlow, 1992, 234-266.
 """
 function kahan(N)
     s = (1/10)^(1/(N-1))
@@ -225,12 +232,12 @@ end
 construct Demmel's matrix of rank N with edge value M
 
 Demmel's matrix was perhaps the first matrix
-whose pseudospectra (with N=3) appeared in a published
-paper [1]. Demmel devised the matrix in order to disprove
-a conjecture of Van Loan's [2].
+whose pseudospectra (with N=3) appeared in [^Demmel1987]
+Demmel devised the matrix in order to disprove
+a conjecture of Van Loan's [^VanLoan1985].
 
-1. J. W. Demmel, "A counterexample for two conjectures about stability", IEEE Trans. Auto. Control, AC-32, pp. 340-343, 1987.
-2. C. Van Loan, "How near is a stable matrix to an unstable matrix?", in R. Brualdi, et al., eds, Contemporary Mathematics 47, Amer. Math. Soc., 1985
+[^Demmel1987]: J. W. Demmel, "A counterexample for two conjectures about stability", IEEE Trans. Auto. Control, AC-32, pp. 340-343, 1987.
+[^VanLoan1985]: C. Van Loan, "How near is a stable matrix to an unstable matrix?", in R. Brualdi, et al., eds, Contemporary Mathematics 47, Amer. Math. Soc., 1985
 """
 function demmel(N,M=1e4)
     isdefined(Main, :ToeplitzMatrices) ||
@@ -246,10 +253,10 @@ end
 
 construct a Landau matrix of rank N for Fresnel number F
 
-Landau's[1] discretization of a Fox-Li operator in the theory of laser cavities
-is one of the earliest applications of pseudospectra.
+The discretization of a Fox-Li operator in the theory of laser cavities
+by [^Landau1977] is one of the earliest applications of pseudospectra.
 
-1. H. J. Landau, "The notion of approximate eigenvalues applied to an integral equation of laser theory", Quart. Appl. Math. 35 (1977), pp. 165-172.
+[^Landau1977]: H. J. Landau, "The notion of approximate eigenvalues applied to an integral equation of laser theory", Quart. Appl. Math. 35 (1977), pp. 165-172.
 """
 function landau_fox_li(N,F=0)
     (F == 0) && (F = (N > 200) ? 32 : 12)
@@ -281,16 +288,15 @@ The matrix arises from SUPG discretisation of an advection-diffusion operator.
 
 This demo is based on a function by Mark Embree, which
 was essentially distilled from the IFISS software of
-Elman and Silvester.  See:
-http://www.ma.umist.ac.uk/djs/software.html
-and [1].
+Elman and Silvester.  See [^Fischer1999] and [^DJS].
 
 For this example, whilst the eigenvalues computed by eigs
 are inaccurate due to the sensitivity of the problem, the
 approximate pseudospectra are very good approximations to
 the true ones.
 
-1. B. Fischer, A. Ramage, D. Silvester and A. Wathen, "Towards Parameter-Free Streamline Upwinding for Advection-Diffusion Problems", Comput. Methods Appl. Mech. Eng., 179, 1999, 185-202.
+[^Fischer1999]: B. Fischer, A. Ramage, D. Silvester and A. Wathen, "Towards Parameter-Free Streamline Upwinding for Advection-Diffusion Problems", Comput. Methods Appl. Mech. Eng., 179, 1999, 185-202.
+[^DJS]: http://www.ma.umist.ac.uk/djs/software.html
 """
 function supg(N)
     h = 1/(N+1)
@@ -397,9 +403,11 @@ end # supg
 """
     olmstead(N)
 
-load Matrix Market Olmstead matrix from file (N ∈ {500,1000})
+load Olmstead matrix from file (`N ∈ {500,1000}`)
 
-See http://math.nist.gov/MatrixMarket/data/NEP/olmstead/olmstead.html
+!!! note
+
+    This function requires a Matrix Market file from [http://math.nist.gov/MatrixMarket/data/NEP/olmstead/olmstead.html]
 """
 function olmstead(N)
     isdefined(Main, :MatrixMarket) ||
@@ -416,9 +424,11 @@ end
 """
     rdbrusselator(N)
 
-load Matrix Market reaction-diffusion Brusselator matrix (N ∈ {800,3200})
+load reaction-diffusion Brusselator matrix from file (`N ∈ {800,3200}`)
 
-See http://math.nist.gov/MatrixMarket/data/NEP/brussel/brussel.html
+!!! note
+
+    This function requires a Matrix Market file from [http://math.nist.gov/MatrixMarket/data/NEP/brussel/brussel.html]
 """
 function rdbrusselator(N)
     isdefined(Main, :MatrixMarket) ||

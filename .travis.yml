@@ -15,9 +15,10 @@ notifications:
   email: false
 # packager suggested this at top of script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+# We need to browbeat Travis into setting up usable PyPlot & Plots:
 before_install:
   - julia -e 'ENV["PYTHON"] = ""; Pkg.add("PyPlot"); Pkg.build("PyPlot")'
-  - julia test/primer.jl || true
+  - LD_PRELOAD=${HOME}/.julia/v${TRAVIS_JULIA_VERSION}/Conda/deps/usr/lib/libz.so julia test/primer.jl || true
 script:
   - LD_PRELOAD=${HOME}/.julia/v${TRAVIS_JULIA_VERSION}/Conda/deps/usr/lib/libz.so julia -e 'Pkg.clone(pwd()); Pkg.build("Pseudospectra"); Pkg.test("Pseudospectra"; coverage=true)'
   - LD_PRELOAD=${HOME}/.julia/v${TRAVIS_JULIA_VERSION}/Conda/deps/usr/lib/libz.so julia -e 'ENV["PSPLOTTER"] = "PyPlot"; Pkg.test("Pseudospectra"; coverage=true)'

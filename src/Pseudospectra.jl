@@ -382,8 +382,9 @@ that first.
 # Arguments
 - `ps_data::PSAStruct`: ingested matrix, as processed by `new_matrix`
 - `gs::GUIState`: object handling graphical output
-- `opts::Dict{Symbol,Any}`: options passed to `redrawcontour`, `arnoldiplotter!`
+- `opts::Dict{Symbol,Any}`:
   - `:ax`, axis limits (overrides value stored in `ps_data`).
+  - other options passed to `redrawcontour`, `arnoldiplotter!`
 
 When revising a spectral portrait (`revise_method==true`), the following
 entries in `opts` also apply:
