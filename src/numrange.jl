@@ -20,7 +20,7 @@ Compute points along the numerical range of a matrix.
 Calls `eigfact` several times.
 """
 function numerical_range(A::AbstractMatrix, thmax=20)
-    rayleighquotient(B,x) = vecdot(x, B * x) / vecdot(x,x)
+    rayleighquotient(B,x) = dot(x, B * x) / dot(x,x)
     # m,n = size(A)
     T = eltype(A)
     CT = (T <: Real) ? Complex{T} : T
@@ -32,8 +32,8 @@ function numerical_range(A::AbstractMatrix, thmax=20)
         th = (i/thmax)*π
         Ath = exp(th*1im)*A
         H = (1/2)*(Ath + Ath')
-        F = eigfact(H)
-        d,X = F[:values],F[:vectors]
+        F = eigen(H)
+        d,X = F.values,F.vectors
 
         # RQ's of A correspond to eigenvalues of H w/ extreme real parts
         k = sortperm(real(d))
@@ -68,7 +68,7 @@ function numrange!(ps_data::PSAStruct,thmax=20)
     ax = zoom.ax
     if mapreduce(w -> ((real(w) < ax[1]) | (real(w) > ax[2]) |
                        (imag(w) < ax[3]) | (imag(w) > ax[4])),
-                 &, true, z)
+                 &, z, init=true)
         warn("The boundary of the numerical range is not visible on the "
              * "current axes; expand axis limits to see it. "
              * "A bounding box is $(extrema(real(z))) $(extrema(imag(z))).")

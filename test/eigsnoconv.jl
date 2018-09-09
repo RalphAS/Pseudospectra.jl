@@ -7,14 +7,14 @@
 # It is conceivable that some realizations might cause this test to fail.
 
 using Pseudospectra
-using Base.Test
+using Test, LinearAlgebra
 
 @testset "ARPACK not converging" begin
     opts = Dict{Symbol,Any}(:npts=>100,:levels=>-12:1:-1,:ax=>[-1.5,1.5,-1,1],
                             :direct=>false)
 
     N = 128
-    A = diagm(ones(N-1),1) + (1/4)* diagm(ones(N-1),-1)
+    A = diagm(1 => ones(N-1)) + (1/4)* diagm(-1 => ones(N-1))
 
     ps_data = new_matrix(A,opts)
     driver!(ps_data,opts,gs)

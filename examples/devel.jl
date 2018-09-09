@@ -5,7 +5,7 @@ This is a template for a development/debugging script.
 # Wrap things up in a module so we can reload stuff as needed.
 module M
 
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 # To run like a test:
 # displayplots = true # If you want to see results immediately.

@@ -1,7 +1,7 @@
 # 225x225 complex dense
 # Compare to S&P, Fig. 60.2
 
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Complex dense" begin
     opts = Dict{Symbol,Any}(:ax => [-1.1,1.2,-1.1,1.1], :npts => 60,

@@ -57,7 +57,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
     if (plotfig > 0)
         if (!isdefined(Main, :PyPlot) || !isdefined(:plot)
             || !(plot === Main.PyPlot.plot))
-            warn("plotting is only implemented for PyPlot")
+            @warn("plotting is only implemented for PyPlot")
             plotfig = 0
         end
     end
@@ -86,7 +86,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
     else
         if (epsln < 1e-9)
             # TODO: divert to specialized Hamiltonian method
-            warn("epsln too small; expect poor accuracy")
+            @warn("epsln too small; expect poor accuracy")
         end
         xold = -Inf
         x,ind = findmax(real.(eA)) # initial iterate
@@ -95,7 +95,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
         iter = 0
         no_imageig = false
         ybest = NaN
-        E = epsln * eye(size(A,1))
+        E = Matrix(epsln * I, size(A)...)
         Areal = (eltype(A) <: Real)
         imagtol = smalltol # used to detect zero real parts
 
@@ -163,7 +163,7 @@ function pspa_2way_real(A,E,y,imagtol,plotfig,xold)
     for j in 1:length(y)
         B2 = A - y[j]*im*I
         M2 = vcat(hcat(1im*B2',E),hcat(-E,1im*B2))
-        eM2 = eigfact(M2)[:values]
+        eM2 = eigvals(M2)
         println("test ",minimum(abs.(real.(eM2)))," $imagtol")
         if minimum(abs.(real.(eM2))) <= imagtol # check for real eigenvalue
             xnew[j] = maximum([imag(ew) for ew in eM2 if (abs(real(ew)) < imagtol)]
@@ -217,7 +217,7 @@ function pspa_2way_imag(A,E,epsln,x,ywant,iter,imagtol,plotfig,verbosity)
     # compute eigenvalues of Hamiltonian matrix M = [-B' E; -E B]
     # where E = ϵ I
     M = vcat(hcat(-B',E),hcat(-E, B))
-    eM = eigfact(M)[:values]
+    eM = eigvals(M)
     minreal = minimum(abs.(real.(eM)))
     if (iter == 1) && (minreal > imagtol)
         imagtol += minreal

@@ -12,8 +12,8 @@ SPDX-License-Identifier: MIT-Expat
 License-Filename: LICENSES/MIT-Expat
 =#
 
-import Base.LinAlg: BlasInt, ARPACKException, checksquare
-import Base.LinAlg.ARPACK: naupd, saupd, eupd_wrapper
+import LinearAlgebra: BlasInt, checksquare
+import Arpack: ARPACKException, naupd, saupd, eupd_wrapper
 
 """
     xeigs(A, B, channel=nothing; nev=6, ncv=max(20,2*nev+1), which=:LM,
@@ -31,7 +31,7 @@ is implemented as a producer which fills `channel`.
 When finished, it `put`s `(:finale, d,[v,],nconv,niter,nmult,resid[,H,V])` to
 `channel`.
 
-The type of `A` must provide methods for `A_mul_B!`, `issymmetric`,
+The type of `A` must provide methods for `mul!`, `issymmetric`,
 `eltype` and `size`. Some variants are not
 implemented for the case where `A` is not a factorable matrix.
 """
@@ -54,7 +54,7 @@ function xeigs(A, B, chnl = nothing;
         throw(ArgumentError("Input matrix A is too small. Use eigfact instead."))
     end
     if nev > nevmax
-        warn("Adjusting nev from $nev to $nevmax")
+        @warn("Adjusting nev from $nev to $nevmax")
         nev = nevmax
     end
     if nev <= 0
@@ -62,7 +62,7 @@ function xeigs(A, B, chnl = nothing;
     end
     ncvmin = nev + (sym ? 1 : 2)
     if ncv < ncvmin
-        warn("Adjusting ncv from $ncv to $ncvmin")
+        @warn("Adjusting ncv from $ncv to $ncvmin")
         ncv = ncvmin
     end
     ncv = BlasInt(min(ncv, n))
@@ -70,7 +70,7 @@ function xeigs(A, B, chnl = nothing;
     isshift = sigma !== nothing
 
     if isa(which,AbstractString)
-        warn("Use symbols instead of strings for specifying which eigenvalues to compute")
+        @warn("Use symbols instead of strings for specifying which eigenvalues to compute")
         which=Symbol(which)
     end
     if (which != :LM && which != :SM && which != :LR && which != :SR &&
@@ -80,7 +80,7 @@ function xeigs(A, B, chnl = nothing;
     if which == :BE && !sym
         throw(ArgumentError("which=:BE only possible for real symmetric problem"))
     end
-    isshift && which == :SM && warn("use of :SM in shift-and-invert mode is not recommended, use :LM to find eigenvalues closest to sigma")
+    isshift && which == :SM && @warn("use of :SM in shift-and-invert mode is not recommended, use :LM to find eigenvalues closest to sigma")
 
     if which==:SM && !isshift # transform into shift-and-invert method with sigma = 0
         isshift=true
@@ -133,7 +133,7 @@ function xeigs(A, B, chnl = nothing;
         throw(ArgumentError("shift mode only implemented for factorable matrices"))
     end
 
-    matvecA!(y, x) = A_mul_B!(y, A, x)
+    matvecA!(y, x) = mul!(y, A, x)
 
     if !isgeneral           # Standard problem
         matvecB = x -> x
@@ -171,7 +171,7 @@ function xeigs(A, B, chnl = nothing;
     # Issue 10495, 10701: Check that all eigenvalues are converged
     nev = length(output[1])
     nconv = output[ritzvec ? 3 : 2]
-    nev ≤ nconv || warn("not all wanted Ritz pairs converged. Requested: $nev, converged: $nconv")
+    nev ≤ nconv || @warn("not all wanted Ritz pairs converged. Requested: $nev, converged: $nconv")
 
     if wantH
         H = extract_mtx(matvecA!, V,ipntr,workl,ncv,iscmplx,sym)
@@ -180,13 +180,9 @@ function xeigs(A, B, chnl = nothing;
     output = (:finale, output...)
 
     if chnl == nothing
-        return (output[2:end]...)
+        return (output[2:end]...,)
     else
-        if VERSION < v"0.6-"
-            produce(output)
-        else
-            put!(chnl,output)
-        end
+        put!(chnl,output)
     end
 end # xeigs
 
@@ -203,7 +199,7 @@ function extract_mtx(matvecA!, V,ipntr,workl,ncv,iscmplx,sym)
             H[:] = workl[ih:ih-1+ncv^2]
         end
     else
-        H = zeros(ncv,ncv) + 0im
+        H = zeros(ncv,ncv) .+ 0im
         # CHECKME: workl is complex, but does ARPACK set ih for a real array?
         H[:] = workl[ih:ih-1+ncv^2]
     end
@@ -229,29 +225,28 @@ modified version of aupd_wrapper with optional plotting of intermediate results.
 function xaupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Function, n::Integer,
                       sym::Bool, cmplx::Bool, bmat::String,
                       nev::Integer, ncv::Integer, which::String,
-                       tol::Real, maxiter::Integer, mode::Integer, v0::Vector,
+                      tol::Real, maxiter::Integer, mode::Integer, v0::Vector,
                        options::Dict,chnl)
 
     lworkl = cmplx ? ncv * (3*ncv + 5) : (sym ? ncv * (ncv + 8) :  ncv * (3*ncv + 6) )
     TR = cmplx ? T.types[1] : T
-    TOL = Array{TR}(1)
-    TOL[1] = tol
+    TOL = Ref{TR}(tol)
 
-    v      = Array{T}(n, ncv)
-    workd  = Array{T}(3*n)
-    workl  = Array{T}(lworkl)
-    rwork  = cmplx ? Array{TR}(ncv) : Array{TR}(0)
+    v     = Matrix{T}(undef, n, ncv)
+    workd = Vector{T}(undef, 3*n)
+    workl = Vector{T}(undef, lworkl)
+    rwork = cmplx ? Vector{TR}(undef, ncv) : Vector{TR}()
 
     if isempty(v0)
-        resid  = Array{T}(n)
-        info   = zeros(BlasInt, 1)
+        resid = Vector{T}(undef, n)
+        info  = Ref{BlasInt}(0)
     else
-        resid  = deepcopy(v0)
-        info   = ones(BlasInt, 1)
+        resid = deepcopy(v0)
+        info  = Ref{BlasInt}(1)
     end
     iparam = zeros(BlasInt, 11)
     ipntr  = zeros(BlasInt, (sym && !cmplx) ? 11 : 14)
-    ido    = zeros(BlasInt, 1)
+    ido    = Ref{BlasInt}(0)
 
     iparam[1] = BlasInt(1)       # ishifts
     iparam[3] = BlasInt(maxiter) # maxiter
@@ -276,56 +271,56 @@ function xaupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functi
             naupd(ido, bmat, n, which, nev, TOL, resid, ncv, v, n,
                   iparam, ipntr, workd, workl, lworkl, info)
         end
-        if info[1] == 1
-            warn("incomplete convergence. Try a different"
+        if info[] == 1
+            @warn("incomplete convergence. Try a different"
                  * " starting vector or increase maxiter or ncv.")
             break
 #            throw(ARPACKException("incomplete convergence. Try a different"
 #                        * " starting vector or increase maxiter or ncv."))
-        elseif info[1] != 0
-            throw(ARPACKException(info[1]))
+        elseif info[] != 0
+            throw(ARPACKException(info[]))
         end
 
-        x = view(workd, ipntr[1]+zernm1)
-        y = view(workd, ipntr[2]+zernm1)
+        x = view(workd, ipntr[1] .+ zernm1)
+        y = view(workd, ipntr[2] .+ zernm1)
         if mode == 1  # corresponds to dsdrv1, dndrv1 or zndrv1
-            if ido[1] == 1
+            if ido[] == 1
                 matvecA!(y, x)
-            elseif ido[1] == 99
+            elseif ido[] == 99
                 break
             else
                 throw(ARPACKException("unexpected behavior"))
             end
         elseif mode == 3 && bmat == "I" # corresponds to dsdrv2, dndrv2 or zndrv2
-            if ido[1] == -1 || ido[1] == 1
+            if ido[] == -1 || ido[] == 1
                 y[:] = solveSI(x)
-            elseif ido[1] == 99
+            elseif ido[] == 99
                 break
             else
                 throw(ARPACKException("unexpected behavior"))
             end
         elseif mode == 2 # corresponds to dsdrv3, dndrv3 or zndrv3
-            if ido[1] == -1 || ido[1] == 1
+            if ido[] == -1 || ido[] == 1
                 matvecA!(y, x)
                 if sym
                     x[:] = y    # overwrite as per Remark 5 in dsaupd.f
                 end
                 y[:] = solveSI(y)
-            elseif ido[1] == 2
+            elseif ido[] == 2
                 y[:] = matvecB(x)
-            elseif ido[1] == 99
+            elseif ido[] == 99
                 break
             else
                 throw(ARPACKException("unexpected behavior"))
             end
         elseif mode == 3 && bmat == "G" # corresponds to dsdrv4, dndrv4 or zndrv4
-            if ido[1] == -1
+            if ido[] == -1
                 y[:] = solveSI(matvecB(x))
-            elseif  ido[1] == 1
-                y[:] = solveSI(view(workd,ipntr[3]+zernm1))
-            elseif ido[1] == 2
+            elseif  ido[] == 1
+                y[:] = solveSI(view(workd,ipntr[3] .+ zernm1))
+            elseif ido[] == 2
                 y[:] = matvecB(x)
-            elseif ido[1] == 99
+            elseif ido[] == 99
                 break
             else
                 throw(ARPACKException("unexpected behavior"))
@@ -343,7 +338,7 @@ function xaupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functi
             # arpackgui_update
             if !cmplx
                 if sym
-                    dispvec = workl[ipntr[6]+(0:ncv-1)]
+                    dispvec = workl[ipntr[6] .+ (0:ncv-1)]
                     if which == :BE
                         # roughly nev large and small ews
                         the_ews = dispvec[end-2*nev+1:end]
@@ -355,15 +350,15 @@ function xaupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functi
                     end
                 else # non-sym real
                 # println("ew/shifts:",workl[ipntr[6]+(0:2*ncv-1)])
-                    dispvec = (workl[ipntr[6]+(0:ncv-1)]
-                               + workl[ipntr[7]+(0:ncv-1)]*im)
+                    dispvec = (workl[ipntr[6] .+ (0:ncv-1)]
+                               + workl[ipntr[7] .+ (0:ncv-1)]*im)
 #                               + workl[ipntr[6]+(ncv:2*ncv-1)]*im)
                 end
                 # nev+1 ews (keep conjugate pairs together)
                 the_ews = dispvec[end-nev:end]
                 the_shifts = dispvec[1:end-nev-1]
             else # complex
-                dispvec = workl[ipntr[6]+(0:ncv-1)]
+                dispvec = workl[ipntr[6] .+ (0:ncv-1)]
                 the_ews = dispvec[end-nev+1:end]
                 the_shifts = dispvec[1:end-nev]
             end
@@ -398,11 +393,7 @@ function xaupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functi
                 stuff = (:media,dispvec,the_str,the_ews,
                          get(options,:ProgAllShifts,false) ? all_shifts
                                                            : the_shifts)
-                if VERSION < v"0.6-"
-                    produce(stuff)
-                else
-                    put!(chnl,stuff)
-                end
+                put!(chnl,stuff)
             end
         end #arpackgui_update
         done_one_already = true

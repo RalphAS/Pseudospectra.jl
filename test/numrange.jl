@@ -1,7 +1,7 @@
 # numerical range
 # This test is based on S&P chap. 43
 using Pseudospectra
-using Base.Test
+using Test
 
 @testset "Num. range" begin
     η = 0.015

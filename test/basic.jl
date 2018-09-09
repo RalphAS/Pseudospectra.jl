@@ -1,6 +1,6 @@
 # test basic case, with mode plots
 
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Basic" begin
 

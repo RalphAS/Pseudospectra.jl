@@ -26,7 +26,7 @@ else
         error("invalid ENV[\"PSPLOTTER\"]")
     end
 end
-info("Plotting package is $psplotter")
+@info("Plotting package is $psplotter")
 setpsplotter(psplotter)
 headless = isdefined(Main,:displayplots) ? !Main.displayplots : true
 gs = setgs(headless=headless, savefigs=headless, fig_id=1)

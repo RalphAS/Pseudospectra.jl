@@ -1,6 +1,6 @@
 # test on generic type
 
-using Pseudospectra, Base.Test, GenericSVD
+using Pseudospectra, Test, GenericSVD
 
 @testset "Generic(Big)" begin
 

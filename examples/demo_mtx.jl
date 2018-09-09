@@ -28,9 +28,9 @@ plotted in [^Trefethen1991].
 [^Trefethen1991]: L. N. Trefethen, "Psuedospectra of matrices", in "Numerical Analysis 1991" (Dundee 1991), Longman Sci. Tech., Harlow, 1992, 234-266.
 """
 function grcar(N::Integer)
-  G = (diagm(ones(N),0) - diagm(ones(N-1),-1) +
-      diagm(ones(N-1),1) + diagm(ones(N-2),2) +
-      diagm(ones(N-3),3))
+  G = (diagm(0 => ones(N)) - diagm(-1 => ones(N-1)) +
+      diagm(1 => ones(N-1)) + diagm(2 => ones(N-2)) +
+      diagm(3 => ones(N-3)))
 end
 
 """
@@ -48,8 +48,8 @@ function cheb(N::Integer)
     x = cos.((π/N)*collect(0:N))
     c = vcat(2,ones(N-1),2) .* map(x -> (-1)^x,0:N)
     dX = x .- x'
-    D = (c*(1 ./ c)') ./ (dX + eye(N+1))
-    D = D - diagm(squeeze(sum(D,2),2))
+    D = (c*(1 ./ c)') ./ (dX + I)
+    D = D - diagm(0 => vec(sum(D, dims=2)))
     return D,x
 end
 
@@ -63,7 +63,7 @@ function advdiff(N,η=0.015)
     D,x = cheb(N)
     # rescale to interval 0:1
     D = 2*D
-    x = (x+1)*(1/2)
+    x = (x .+ 1)*(1/2)
     L = η*D^2 + D
     # impose boundary conditions
     L = L[2:N,2:N]
@@ -71,7 +71,7 @@ function advdiff(N,η=0.015)
     w = sqrt.(π*sqrt.(x-x.^2)*(1/(2N)))
     # convert to L2 norm on function space
     w = w[2:N]
-    L = diagm(w) * L * diagm(1.0 ./ w)
+    L = diagm(0 => w) * L * diagm(0 => 1.0 ./ w)
 end
 
 """
@@ -88,12 +88,11 @@ function orrsommerfeld(N,R=5722,α=1.0)
     D,x = cheb(N)
     D2 = D^2
     D2 = D2[2:N,2:N]
-    S = diagm([0; 1 ./(1-x[2:N].^2); 0])
-    D4 = (diagm(1-x.^2)*D^4 - 8*diagm(x)*D^3 - 12*D^2)*S
+    S = diagm(0 => [0; 1 ./(1 .- x[2:N].^2); 0])
+    D4 = (diagm(0 => 1 .- x.^2)*D^4 - 8*diagm(0 => x)*D^3 - 12*D^2)*S
     D4 = D4[2:N,2:N]
     a2 = α^2
-    I = eye(N-1)
-    A = (D4-2*a2*D2+a2^2*I)*(1/R) - 2α*im*I - α*im*diagm(1-x[2:N].^2)*(D2-a2*I)
+    A = (D4-2*a2*D2+a2^2*I)*(1/R) - 2α*im*I - α*im*diagm(0 => 1 .- x[2:N].^2)*(D2-a2*I)
     B = D2-a2*I
     C = B\A
 end
@@ -131,7 +130,7 @@ function trefethen_tutorial(N)
     x = x[2:N+1]
     x = L*x
     A = A[2:N+1,2:N+1]
-    A = A + (3+3im) * diagm(x.^2) - (1/16)*diagm(x.^4)
+    A = A + (3+3im) * diagm(0 => x.^2) - (1/16)*diagm(0=> x.^4)
     # absorb Chebyshev weights
     w = sqrt.(π*sqrt(L^2 - x.^2) * (1 / (2*(N+1))))
     B = zeros(eltype(A),N,N)
@@ -180,15 +179,15 @@ function convdiff_fd(N)
     alpha2 = w2/h2
     beta2 = 2*e/h2^2
 
-    A1 = spdiagm(((-alpha1-beta1)*ones(n1-1),
-                  2*beta1*ones(n1),
-                  (alpha1-beta1)*ones(n1-1)), -1:1, n1, n1)
-    A2 = spdiagm(((-alpha2-beta2)*ones(n2-1),
-                  2*beta2*ones(n2),
-                  (alpha2-beta2)*ones(n2-1)), -1:1, n2, n2)
+    A1 = spdiagm(-1 => (-alpha1-beta1)*ones(n1-1),
+                  0 => 2*beta1*ones(n1),
+                  1 => (alpha1-beta1)*ones(n1-1))
+    A2 = spdiagm(-1 => (-alpha2-beta2)*ones(n2-1),
+                  0 => 2*beta2*ones(n2),
+                  1 => (alpha2-beta2)*ones(n2-1))
 
     # Now compute the 2D finite difference matrix
-    C = kron(speye(n2),A1) + kron(A2,speye(n1))
+    C = kron(sparse(1.0I,n2,n2),A1) + kron(A2,sparse(1.0I,n1,n1))
 end
 
 function gallery5(T=Float64)
@@ -223,7 +222,7 @@ function kahan(N)
     c = sqrt(1-s^2)
 
     col = -s.^(0:N-1)*c
-    K = triu(repmat(col,1,N),1)+diagm(s.^(0:N-1))
+    K = triu(repmat(col,1,N),1)+diagm(0 => s.^(0:N-1))
 end
 
 """
@@ -261,16 +260,17 @@ by [^Landau1977] is one of the earliest applications of pseudospectra.
 function landau_fox_li(N,F=0)
     (F == 0) && (F = (N > 200) ? 32 : 12)
     # calculate Gaussian quadrature nodes and weights
-    β = 0.5 * (1 - (2.0 * collect(1:N-1)).^(-2)) .^(-1/2)
-    T = diagm(β,1) + diagm(β,-1)
-    d,V = eig(T)
+    β = 0.5 * (1 .- (2.0 * collect(1:N-1)).^(-2)) .^(-1/2)
+    T = diagm(1 => β) + diagm(-1 => β)
+    ep = eigen(T)
+    d,V = ep.values, ep.vectors
     idx = sortperm(d)
     nodes = d[idx]
     w = zeros(N)
     w[1:N] = 2*V[1,idx].^2
-    B = zeros(N,N)+0im
+    B = zeros(N,N) .+ 0im
     for k in 1:N
-        B[k,:] = w' * sqrt(F*im) .* exp.(-im*π*F*(nodes[k] - nodes').^2)
+        B[k,:] = w' * sqrt(F*im) .* exp.(-im*π*F*(nodes[k] .- nodes').^2)
     end
     w = sqrt.(w)
     for j in 1:N
@@ -318,29 +318,26 @@ function supg(N)
             blk =  v*(nu*[-1/3 8/3 -1/3] +
                       h*[-w[1]/3  0 w[1]/3] +
                       delta*h*[(wy2-2*wx2)/3 4/3*(wx2+wy2) (wy2-2*wx2)/3])
-            A[N*(j-1)+1:N*j, N*(j-1)+1:N*j] = spdiagm((blk[1:end-1,1],
-                                                       blk[:,2],
-                                                       blk[1:end-1,3]),
-                                                      [-1,0,1],N,N)
+            A[N*(j-1)+1:N*j, N*(j-1)+1:N*j] = spdiagm(-1 => blk[1:end-1,1],
+                                                       0 => blk[:,2],
+                                                       1 => blk[1:end-1,3])
             if (j>1)
                 blk = v*(nu*[-1/3 -1/3 -1/3] +
                          h*[-(w[1]+w[2])/12 -w[2]/3 (w[1]-w[2])/12] +
                          delta*h*
                          [(-(wx2+wy2)/6-w[1]*w[2]/2) (wx2-2*wy2)/3 (-(wx2+wy2)/6+w[1]*w[2]/2)])
-                A[N*(j-1)+1:N*j, N*(j-2)+1:N*(j-1)] = spdiagm((blk[1:end-1,1],
-                                                               blk[:,2],
-                                                               blk[1:end-1,3]),
-                                                              [-1,0,1],N,N)
+                A[N*(j-1)+1:N*j, N*(j-2)+1:N*(j-1)] = spdiagm(-1 => blk[1:end-1,1],
+                                                               0 => blk[:,2],
+                                                               1 => blk[1:end-1,3])
             end
             if (j<N)
                 blk = v*(nu*[-1/3 -1/3 -1/3] +
                          h*[(w[2]-w[1])/12 w[2]/3 (w[1]+w[2])/12] +
                          delta*h*
                          [(-(wx2+wy2)/6+w[1]*w[2]/2) (wx2-2*wy2)/3 (-(wx2+wy2)/6-w[1]*w[2]/2)])
-                A[N*(j-1)+1:N*j, N*j+1:N*(j+1)] = spdiagm((blk[1:end-1,1],
-                                                           blk[:,2],
-                                                           blk[1:end-1,3]),
-                                                          [-1,0,1],N,N)
+                A[N*(j-1)+1:N*j, N*j+1:N*(j+1)] = spdiagm(-1 => blk[1:end-1,1],
+                                                           0 => blk[:,2],
+                                                           1 => blk[1:end-1,3])
             end
         end
 

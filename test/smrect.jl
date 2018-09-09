@@ -1,5 +1,5 @@
 # 40x39 small rectangular
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Small Rectangular" begin
     G = Pseudospectra.grcar(40)

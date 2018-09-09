@@ -1,4 +1,4 @@
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Sparse-ARPACK" begin
     # 400x400 real sparse

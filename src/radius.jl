@@ -56,7 +56,7 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
     if (plotfig > 0)
         if (!isdefined(Main, :PyPlot) || !isdefined(:plot)
             || !(plot === Main.PyPlot.plot))
-            warn("psa_radius: plotting is only implemented for PyPlot")
+            @warn("psa_radius: plotting is only implemented for PyPlot")
             plotfig = 0
         end
     end
@@ -65,7 +65,7 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
     (n==m) || throw(ArgumentError("matrix must be square"))
     (isa(epsln,Real) && (epsln >= 0)) || throw(ArgumentError("ϵ must be >= 0"))
 
-    isempty(eA) && (eA = eigfact(A)[:values])
+    isempty(eA) && (eA = eigvals(A))
 
     if plotfig > 0
         figure(plotfig)
@@ -85,7 +85,7 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
     else
         if (epsln < 1e-9)
             # TODO: divert to specialized Hamiltonian method
-            warn("epsilon too small; expect poor accuracy")
+            @warn("epsilon too small; expect poor accuracy")
         end
         rold = -1e-6
         r,ind = findmax(abs.(eA)) # initial iterate
@@ -95,7 +95,7 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
         iter = 0
         no_imageig = false
         thetabest = NaN
-        mE = epsln * eye(size(A,1))
+        mE = Matrix(epsln * I, size(A)...)
         Areal = (eltype(A) <: Real)
         realtol = smalltol # used to detect zero real parts
         radtol = smalltol # determines how far ew magnitudes can be from unity
@@ -170,10 +170,10 @@ function pspr_2way_rad(A,mE,theta,realtol,iter,rold,plotfig,verbosity)
 
     n = size(A,1)
     Aisreal = (eltype(A) <: Real)
-    rnew = zeros(theta)
+    rnew = zeros(size(theta)...)
     for j in 1:length(theta)
         K = vcat(hcat(im*exp(im*theta[j])*A',mE),hcat(-mE,im*exp(-im*theta[j])*A))
-        eK = eigfact(K)[:values]
+        eK = eigvals(K)
 
         if minimum(abs.(real.(eK))) <= realtol # check for real eigenvalue
             rnew[j] = maximum([imag(ew) for ew in eK if (abs(real(ew)) < realtol)])
@@ -239,11 +239,11 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
     n = size(A,1)
 
     # compute generalized eigenvalues of matrix pencil F - λ G
-    R = r * eye(n)
+    R = Matrix(r * I, n, n)
     O = zeros(n,n)
     F = vcat(hcat(mE,A),hcat(R,O))
     G = vcat(hcat(O,R),hcat(A',mE))
-    eM = eigfact(F,G)[:values]
+    eM = eigvals(F,G)
 
     # extract ews with magnitude (nearly) 1
     eM = [ew for ew in eM if (abs(abs(ew)-1) < radtol)]
@@ -259,8 +259,8 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
         for j in 1:length(theta)
             (theta[j] < 0) && (theta[j] += 2π)
             Ashift = A - (r*(cos(theta[j])+im*sin(theta[j]))) * I
-            s = svdfact(Ashift)[:S]
-            minσ,minind = findmin(abs.(s-epsln))
+            s = svdvals(Ashift)
+            minσ,minind = findmin(abs.(s .- epsln))
             (minind == n) && push!(idx2,j)
         end
         nremoved = length(theta) - length(idx2)
@@ -315,7 +315,7 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
 	        # remove the midpoint if the minimum singular value is greater
 	        # than ϵ, since in this case the midpoint should lie outside the
 	        # ϵ-pseudospectrum.
-	        if (minimum(svdfact(A-r*exp(im*thetamid)*I)[:S]) <= epsln)
+	        if (minimum(svdvals(A-r*exp(im*thetamid)*I)) <= epsln)
 		    push!(thetanew, thetamid)
 	        end
 
@@ -329,7 +329,7 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
 	        # remove the midpoint if the minimum singular value is greater
 	        # than ϵ, since in this case the midpoint should lie outside the
 	        # ϵ-pseudospectrum.
-	        if (minimum(svdfact(A-r*exp(im*thetamid)*I)[:S]) <= epsln)
+	        if (minimum(svdvals(A-r*exp(im*thetamid)*I)) <= epsln)
 		    push!(thetanew, thetamid)
 	        end
 
@@ -346,7 +346,7 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
 	        # remove the midpoint if the minimum singular value is greater than
 	        # ϵ, since in this case the midpoint should lie outside the
 	        # ϵ-pseudospectrum.
-	        if (minimum(svdfact(A-r*exp(im*thetamid)*I)[:S]) <= epsln)
+	        if (minimum(svdvals(A-r*exp(im*thetamid)*I)) <= epsln)
 		    push!(thetanew, thetamid)
 	        end
             end

@@ -1,5 +1,5 @@
 # 60x59 med rectangular (uses QR Lanczos)
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Medium Rectangular" begin
     G = Pseudospectra.grcar(60)

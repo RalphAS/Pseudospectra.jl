@@ -40,7 +40,7 @@ function modeplot(ps_data::PSAStruct,gs,pkey,z=NaN;
         eigA = get(ps_dict,:proj_ews,ps_dict[:ews])
         isempty(eigA) && throw(ArgumentError("ps_data holds no eigenvalues"))
         dists = [abs(eig - z) for eig in eigA]
-        idx = indmin(dists)
+        idx = argmin(dists)
         z = eigA[idx]
     end
     if zmarker != nothing
@@ -87,7 +87,7 @@ function oneeigcond(T0,ew0,verbosity; dlg=replqdlg, max_its=3)
     T = T - ew * I
     # for small matrices, use SVD
     if n < 200
-        U,S,V = svd(full(T))
+        U,S,V = svd(Matrix(T))
         evr = V[:,end]
         evl = conj(U[:,end])
     else
@@ -96,7 +96,7 @@ function oneeigcond(T0,ew0,verbosity; dlg=replqdlg, max_its=3)
             F = lufact(T)
         end
         wb_size = 200
-        v0 = normalize!(randn(n)+0im)
+        v0 = normalize!(randn(n) .+ 0im)
         infs_found = false # indicator for inv-iter success
         evr = copy(v0)
         local resid
@@ -131,7 +131,7 @@ function oneeigcond(T0,ew0,verbosity; dlg=replqdlg, max_its=3)
                 oldev = copy(evl)
                 try
                     if issparse(T)
-                        At_ldiv_B!(evl,F,oldev)
+                        ldiv!(evl,transpose(F),oldev)
                     else
                         evl = transpose(T) \ oldev # At_ldiv_B!(evl,T,oldev)
                     end
@@ -154,7 +154,7 @@ function oneeigcond(T0,ew0,verbosity; dlg=replqdlg, max_its=3)
         if infs_found || (resid > tol)
             (verbosity > 1) && println("Infs found: $infs_found resid: $resid")
             if dlg("Compute using full SVD?",quest_str) == 1 # 1:yes
-                U,S,V = svd(full(T))
+                U,S,V = svd(Matrix(T))
                 evr = V[:,end]
                 evl = conj(U[:,end])
             else
@@ -188,12 +188,12 @@ function psmode_inv_lanczos(A,q0::Vector,z::Complex,tol,num_its;
     (m == n) || throw(ArgumentError("Matrix must be square"))
     diaga = diag(A)
     cdiaga = conj(diaga)
-    q = q0+0im
+    q = q0 .+ 0im
     if n < 200
         # just use plain SVD
-        A1 = copy(A) + 0im
-        A1[1:m+1:end] = diaga - z
-        U,S,V = svd(full(A1))
+        A1 = copy(A) .+ 0im
+        A1[1:m+1:end] = diaga .- z
+        U,S,V = svd(Matrix(A1))
         Z = minimum(S)
         @assert S[end] == Z
         q = V[:,end]
@@ -219,8 +219,8 @@ function psmode_inv_lanczos(A,q0::Vector,z::Complex,tol,num_its;
                 # v = F \ (Fp \ q) - β * qold
                 w = zeros(q+0im)
                 v = similar(w)
-                Ac_ldiv_B!(w,F,q)
-                A_ldiv_B!(v,F,q)
+                ldiv!(w,adjoint(F),q)
+                ldiv!(v,F,q)
                 v -= β * qold
             else
                 v = T1 \ (T2 \ q) - β * qold
@@ -237,8 +237,8 @@ function psmode_inv_lanczos(A,q0::Vector,z::Complex,tol,num_its;
             # calculate eigenvalues of H, but if error is too big,
             # set σ to a huge value
             try
-                E = eigfact(H[1:l,1:l])
-                σ = maximum(E[:values])
+                E = eigen(H[1:l,1:l])
+                σ = maximum(E.values)
             catch
                 σ = 1e308
             end
@@ -253,15 +253,15 @@ function psmode_inv_lanczos(A,q0::Vector,z::Complex,tol,num_its;
         # get eigenvector from inverse Lanczos basis
         # if matrix is too non-normal, revert
         try
-            E = eigfact(H)
-            q = Q[:,1:end-1] * E[:vectors][:,end]
+            E = eigen(H)
+            q = Q[:,1:end-1] * E.vectors[:,end]
         catch
             l = num_its
         end
         if l >= num_its
             if fallbacksvd
                 A1 = A - z * I
-                U,S,V = svd(full(A1))
+                U,S,V = svd(Matrix(A1))
                 Z = minimum(S)
                 q = V[:,end]
             else

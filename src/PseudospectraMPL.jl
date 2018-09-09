@@ -17,7 +17,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 module PseudospectraMPL
 
 using PyPlot
-using Pseudospectra
+using Pseudospectra, LinearAlgebra, Printf
 
 export MPLGUIState, psa
 
@@ -51,7 +51,7 @@ const default_opts = Dict{Symbol,Any}(
     :fillcontour => true
 )
 
-type MPLGUIState <: GUIState
+mutable struct MPLGUIState <: GUIState
     mainph # opaque backend object for main plot object
     # the fig. numbers are redundant, but more convenient
     mainfignum::Int
@@ -149,7 +149,7 @@ function redrawcontour(gs::MPLGUIState, ps_data::PSAStruct, opts)
         end
         if get(opts,:showfov,false)
             if isempty(get(ps_dict,:schur_mtx,[]))
-                warn("showfov set in opts but unavailable")
+                @warn("showfov set in opts but unavailable")
             else
                 if isempty(get(ps_dict,:fov,[]))
                     numrange!(ps_data,get(opts,:fov_npts,20))
@@ -191,7 +191,7 @@ function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts)
             end
             # ps_data.zoom_list[ps_data.zoom_pos].ax = ax
         else
-            warn("non-auto axes not implemented")
+            @warn("non-auto axes not implemented")
             # CHECKME: are we sure this is ready?
             # ax = ps_data.zoom_list[ps_data.zoom_pos].ax
         end
@@ -324,7 +324,7 @@ function mtxpowersplot(gs::MPLGUIState,ps_data::PSAStruct,nmax=50;gradual=false,
     ax2 = copy(ax)
     ax2[3] = 1e-2
     pos = 2
-    mtx = eye(size(A,1))
+    mtx = Matrix(1.0I,size(A)...)
     max_tp = -Inf
     min_tp = Inf
     ax_factor = 3
@@ -385,11 +385,11 @@ function mtxpowersplot(gs::MPLGUIState,ps_data::PSAStruct,nmax=50;gradual=false,
             sleep(0.02)
         end
         if (max_tp > 1e130) || ((min_tp < 1e-130) && (min_tp != 0))
-            warn("stopping: numbers going out of range")
+            @warn("stopping: numbers going out of range")
             stop_trans = true
         end
         if min_tp == 0
-            warn("stopping: exactly zero matrix")
+            @warn("stopping: exactly zero matrix")
             stop_trans = true
         end
         (pos > nmax) && (stop_trans = true)
@@ -415,7 +415,7 @@ function mtxexpsplot(gs::MPLGUIState,ps_data::PSAStruct,dt=0.1,nmax=50;
 
     stop_trans = false
     A = ps_data.input_matrix
-    eAdt = expm(dt*A)
+    eAdt = exp(dt*A)
 
     trans = zeros(nmax+1)
     the_time = similar(trans)
@@ -426,7 +426,7 @@ function mtxexpsplot(gs::MPLGUIState,ps_data::PSAStruct,dt=0.1,nmax=50;
     ax2 = copy(ax)
     ax2[3] = 1e-2
     pos = 2
-    eAt = eye(size(A,1))
+    eAt = Matrix(1.0I,size(A)...)
     max_tp = -Inf
     min_tp = Inf
     ax_factor = 3
@@ -497,7 +497,7 @@ function mtxexpsplot(gs::MPLGUIState,ps_data::PSAStruct,dt=0.1,nmax=50;
         end
 
         if (max_tp > 1e130) || ((min_tp < 1e-130) && (min_tp != 0))
-            warn("stopping: numbers going out of range")
+            @warn("stopping: numbers going out of range")
             stop_trans = true
         end
         (pos > nmax) && (stop_trans = true)
@@ -522,7 +522,7 @@ function zoomin!(gs::MPLGUIState, ps_data::PSAStruct,
     ax = getxylims(gs.mainph)
     res = zoomin!(ps_data,z,ax)
     if res < 0
-        warn("unable to zoom based on requested point")
+        @warn("unable to zoom based on requested point")
     elseif res == 0
         # redraw existing portrait
         redrawcontour(gs, ps_data, opts)
@@ -545,7 +545,7 @@ function zoomout!(gs::MPLGUIState, ps_data::PSAStruct,
     ax = getxylims(gs.mainph); # current plot axes
     res = zoomout!(ps_data,z,ax,include_fov=include_fov)
     if res < 0
-        warn("unable to zoom based on requested point")
+        @warn("unable to zoom based on requested point")
     elseif res == 0
         # redraw existing portrait
         redrawcontour(gs, ps_data, opts)
@@ -691,12 +691,12 @@ function et_cmap()
         1.00000000000000   0.60000000000000                  0
     ]
     nc = size(cm,1)
-    xvals = collect(linspace(0.0,1.0,nc))
+    xvals = collect(range(0.0, stop=1.0, length=nc))
     r = [(xvals[i],cm[i,1],cm[i,1]) for i in 1:nc]
     g = [(xvals[i],cm[i,2],cm[i,2]) for i in 1:nc]
     b = [(xvals[i],cm[i,3],cm[i,3]) for i in 1:nc]
     PyPlot.ColorMap("eigtool",r,g,b,
-                    Array{Tuple{Float64,Float64,Float64}}(0),
+                    Array{Tuple{Float64,Float64,Float64}}(undef, 0),
                     256,1.0)
 end
 

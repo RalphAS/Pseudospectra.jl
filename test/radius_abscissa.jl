@@ -1,5 +1,5 @@
 # pseudospectral radius and abscissa
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "PS radius & abscissa" begin
     A = Pseudospectra.grcar(100)

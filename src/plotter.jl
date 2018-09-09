@@ -36,7 +36,7 @@ function setpsplotter(plotter::Symbol=:default)
         throw(ArgumentError("plotter argument must be :Plots or :PyPlot"))
     end
     if need2load
-        eval(Main, :(include($fnam)))
+        Core.eval(Main, :(include($fnam)))
     end
     myplotter[]=plotter
     nothing

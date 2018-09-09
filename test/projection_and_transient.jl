@@ -2,7 +2,7 @@
 # Compare to figures in S&P, chap. 22.
 # ∃ small discrepancies for large ϵ,
 # but we are consistent w/ EigTool.
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Projection/Transients" begin
     # for a sensible projection, must provide axes

@@ -22,8 +22,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 
 using ProgressMeter
 
-# needed for .& and abstract types
-using Compat
+using LinearAlgebra, SparseArrays, Arpack, Printf
 
 export new_matrix, driver!
 export psa_compute, psa_radius, psa_abscissa
@@ -96,8 +95,8 @@ function mtxpowersplot end
 function fillopts end
 function isheadless end
 
-include("compute.jl")
 include("utils.jl")
+include("compute.jl")
 include("xeigs.jl")
 include("modes.jl")
 include("abscissa.jl")
@@ -168,7 +167,7 @@ function new_matrix(A::AbstractMatrix,
     # proj_lev, levels, ax, arpack stuff, etc. from opts
 
     # define as placeholder if not provided
-    eigA = get(opts,:eigA,Vector{complex(eltype(A))}(0))
+    eigA = get(opts,:eigA,Vector{complex(eltype(A))}())
 
     input_unitary_mtx = get(opts,:unitary_mtx,I)
     proj_lev = get(opts,:proj_lev,Inf)
@@ -186,13 +185,13 @@ function new_matrix(A::AbstractMatrix,
         # but that's just asking for surprises. This should be robust.
         try
             if eltype(A) <: Complex
-                F = schurfact(A)
+                F = schur(A)
             else
                 # For some reason Julia devs think a real Schur decomp
                 # should shadow the true (not real!) thing
-                F = schurfact(A+zero(eltype(A))*im)
+                F = schur(A .+ zero(eltype(A))*im)
             end
-            Tschur,U,eigA  = F[:T],F[:Z],F[:values]
+            Tschur,U,eigA  = F.T,F.Z,F.values
             haveschur = true
         catch JE
             isa(JE,MethodError) || rethrow(JE)
@@ -206,7 +205,7 @@ function new_matrix(A::AbstractMatrix,
 
                 # Warning is needed here since it explains why we need axes
                 # for the driver.
-                warn("Failed to compute eigenvalues; proceeding without.")
+                @warn("Failed to compute eigenvalues; proceeding without.")
                 if verbosity > 0
                     # If we display(JE) we get the whole damn matrix too
                     println("Exception was method error: ",JE.f,
@@ -242,7 +241,7 @@ function new_matrix(A::AbstractMatrix,
                             ps_dict)
         if !direct
             if !haskey(opts,:arpack_opts)
-                warn("setting default ARPACK options")
+                @info("setting default ARPACK options")
                 ps_dict[:arpack_opts] = ArpackOptions{eltype(A)}()
             else
                 isa(opts[:arpack_opts],ArpackOptions) || throw(
@@ -255,14 +254,14 @@ function new_matrix(A::AbstractMatrix,
                 println("converting to full for direct computation")
             Atmp = full(ps_data.matrix)
             try
-                F  = schurfact(Atmp+complex(eltype(Atmp))(0))
-                ps_dict[:schur_mtx] = F[:T]
-                ps_dict[:schur_unitary_mtx] = F[:Z]
-                ps_data.matrix = UpperTriangular(F[:T])
-                ps_data.unitary_mtx = ps_data.input_unitary_mtx * F[:T]
+                F  = schur(Atmp+complex(eltype(Atmp))(0))
+                ps_dict[:schur_mtx] = F.T
+                ps_dict[:schur_unitary_mtx] = F.Z
+                ps_data.matrix = UpperTriangular(F.T)
+                ps_data.unitary_mtx = ps_data.input_unitary_mtx * F.T
                 ps_dict[:projection_on] = true
-                ps_dict[:ews] = F[:values]
-                ps_dict[:orig_ews] = copy(F[:values])
+                ps_dict[:ews] = F.values
+                ps_dict[:orig_ews] = copy(F.values)
             catch
                 ps_data.matrix = Atmp
             end
@@ -325,7 +324,7 @@ function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
 
     verbosity = get(opts,:verbosity,1)
     direct = false
-    eigA = get(opts,:eigA,Vector{complex(eltype(A))}(0))
+    eigA = get(opts,:eigA,Vector{complex(eltype(A))}())
 
     input_unitary_mtx = get(opts,:unitary_mtx,I)
     npts = get(opts,:npts,setgridsize(n,24,80,!Aisreal))
@@ -339,7 +338,7 @@ function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     ps_data = PSAStruct(A, input_unitary_mtx, A, input_unitary_mtx,
                         ps_dict)
     if !haskey(opts,:arpack_opts)
-        warn("setting default ARPACK options")
+        @info("setting default ARPACK options")
         ps_dict[:arpack_opts] = ArpackOptions{eltype(A)}()
     else
         isa(opts[:arpack_opts],ArpackOptions) || throw(
@@ -392,7 +391,7 @@ entries in `opts` also apply:
  - `:direct::Bool`.
 """
 function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
-                 myprintln=println, mywarn=warn, revise_method=false)
+                 myprintln=println, logger=:default, revise_method=false)
     # DEVNOTE: mostly corresponds to switch_redraw.m in EigTool
     opts = fillopts(gs,optsin)
     ps_dict = ps_data.ps_dict
@@ -406,7 +405,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
     if revise_method & haskey(opts,:arpack_opts) & !ps_dict[:direct]
         ao = opts[:arpack_opts]
         if !isa(ao,ArpackOptions)
-            mywarn("invalid :arpack_opts option")
+            @mywarn(logger,"invalid :arpack_opts option")
             return nothing
         end
         if haskey(ps_dict,:arpack_opts)
@@ -423,7 +422,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
         if isvalidax(opts[:ax])
             new_ax = opts[:ax]
         else
-            mywarn("opts[:ax] is not a valid bounding box")
+            @mywarn(logger,"opts[:ax] is not a valid bounding box")
             return nothing
         end
     else
@@ -448,7 +447,7 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
                 end
             else
                 if isempty(zoom.ax)
-                    mywarn("bounding box must be specified")
+                    @mywarn(logger,"bounding box must be specified")
                     return nothing
                 end
             end
@@ -468,13 +467,13 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
                                                              eigA,psa_opts,
                                                              B,
                                                         myprintln=myprintln,
-                                                        mywarn=mywarn)
+                                                        logger=logger)
 
         # FIXME: handle projection properly
         ps_dict[:proj_ews] = eigAproj
 
         if err != 0
-            mywarn("PSA computation failed")
+            @mywarn(logger,"PSA computation failed")
             # FIXME: reset GUI if any
             return nothing
         end
@@ -514,17 +513,14 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
                                                       v0=ao.v0,
                                                       sigma=ao.sigma,
                                                       options=opts)
-            catch JE
+
+           catch JE
             # FIXME: post a dialog, reset GUI if any
-                warn("xeigs throws:")
+                @warn("xeigs throws:")
                 display(JE)
                 println()
                 stuff = (:failure,nothing)
-                if VERSION < v"0.6-"
-                    produce(stuff)
-                else
-                    put!(chnl,stuff)
-                end
+                put!(chnl,stuff)
                 return nothing
             end
         end
@@ -532,27 +528,18 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
         local ews,H,V
         local nconv,niter,nmult
         old_ax = zeros(0)
-        if VERSION >= v"0.6-"
-            chnl = Channel(xeigsproducer)
-            xeigs_result = take!(chnl)
-        else
-            chnl = Task(()->xeigsproducer(true))
-            xeigs_result = consume(chnl)
-        end
+        chnl = Channel(xeigsproducer)
+        xeigs_result = take!(chnl)
         while xeigs_result[1] ∉ [:finale,:failure]
             the_key,dispvec,the_str,the_ews,the_shifts = xeigs_result
             if !isheadless(gs)
                 arnoldiplotter!(gs,old_ax,opts,dispvec,the_str,the_ews,
                                 the_shifts)
             end # if gs
-            if VERSION >= v"0.6-"
-                xeigs_result = take!(chnl)
-            else
-                xeigs_result = consume(chnl)
-            end
+            xeigs_result = take!(chnl)
         end
         if xeigs_result[1] == :failure
-            mywarn("xeigs failed")
+            @mywarn(logger,"xeigs failed")
             return nothing
         end
         the_key,ews,v,nconv,niter,nmult,resid,H,V = xeigs_result
@@ -626,7 +613,7 @@ function origplot!(ps_data::PSAStruct, opts, gs; ax_only = false)
     zoom = ps_data.zoom_list[1]
     if isempty(zoom.ax)
         if isempty(get(ps_dict,:ews,[]))
-            warn("origplot called w/o preset axes or eigenvalues")
+            @warn("origplot called w/o preset axes or eigenvalues")
         else
             zoom.ax = vec2ax(ps_dict[:ews])
         end

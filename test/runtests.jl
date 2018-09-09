@@ -3,15 +3,7 @@
 
 # To run during development (from REPL) include this file INSIDE A MODULE
 
-using Pseudospectra, Base.Test
-
-if VERSION < v"0.6-"
-    macro test_warn(msg, expr)
-        quote
-            $(esc(expr))
-        end
-    end
-end
+using Pseudospectra, Test
 
 tests = ["basic","arpack1","medcplx","medrect","smrect","spdirect",
           "projection_and_transient","radius_abscissa","negproj","eigsnoconv",

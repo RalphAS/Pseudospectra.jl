@@ -1,5 +1,5 @@
 # complex dense, projected away from origin
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Inverse projection" begin
     opts = Dict{Symbol,Any}(:ax => [-1.2,1.2,-1.1,1.1], :npts => 60,

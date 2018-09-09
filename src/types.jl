@@ -11,16 +11,16 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 """
 object to hold state for the GUI used by Pseudospectra
 """
-@compat abstract type GUIState end
+abstract type GUIState end
 
-type LevelDesc
+mutable struct LevelDesc
     isunif::Bool
     full_levels
     first
     step
     last
     function LevelDesc(levs)
-        if isa(levs,Range)
+        if isa(levs,AbstractRange)
             levels = collect(levs)
         elseif isa(levs,Vector) && (eltype(levs) <: Real)
             levels = levs
@@ -50,7 +50,7 @@ structure representing a spectral portrait; includes a mesh for `z=x+iy`,
 values of the resolvent norm on the mesh, suitable contour levels,
 and some other metadata.
 """
-type Portrait
+mutable struct Portrait
     x::Vector
     y::Vector
     Z::Matrix
@@ -83,7 +83,7 @@ end
 constructs an object to manage the Arnoldi scheme; see [`eigs`](@ref) for the
 meaning of fields.
 """
-type ArpackOptions{T}
+mutable struct ArpackOptions{T}
     # Control of iterative computations:
     nev::Int # nr. of eigenvalues for eigs() to search for
     ncv::Int # max. subspace size for eigs()
@@ -93,10 +93,10 @@ type ArpackOptions{T}
     v0::Vector # initial Ritz vector for eigs()
     sigma # shift parameter for eigs()
 
-    function (::Type{ArpackOptions{T}}){T}(; nev=6, ncv=0, which=:LM,
-                                           tol=zero(T),maxiter=300,
-                                           v0=Vector{T}(0),
-                                           sigma=nothing)
+    function ArpackOptions{T}(; nev=6, ncv=0, which=:LM,
+                              tol=zero(T),maxiter=300,
+                              v0=Vector{T}(),
+                              sigma=nothing) where T
         if ncv==0
             ncv = max(20,2*nev+1)
         end
@@ -104,14 +104,14 @@ type ArpackOptions{T}
     end
 end
 
-function Base.:(==){T,S}(l::ArpackOptions{T},r::ArpackOptions{S})
+function Base.:(==)(l::ArpackOptions{T},r::ArpackOptions{S}) where {T,S}
     l === r && return true
     for f in fieldnames(ArpackOptions)
         (getfield(l,f) == getfield(r,f)) || return false
     end
     true
 end
-function Base.hash{T}(l::ArpackOptions{T},h::UInt)
+function Base.hash(l::ArpackOptions{T},h::UInt) where T
     h1 = hash(:ArpackOptions,h)
     for f in fieldnames(ArpackOptions)
         h1 = hash(getfield(l,f),h1)
@@ -122,7 +122,7 @@ end
 """
 Wrapper structure for Pseudospectra session data
 """
-type PSAStruct
+mutable struct PSAStruct
     matrix
     unitary_mtx
     input_matrix
@@ -132,7 +132,7 @@ type PSAStruct
     zoom_pos::Int
     # aside: why is there a :proj_lev entry in ps_dict?
     function PSAStruct(m1,u1,m1i,u1i,dict)
-        new(m1,u1,m1i,u1i,dict,Vector{Portrait}(0),0)
+        new(m1,u1,m1i,u1i,dict,Vector{Portrait}(),0)
     end
 end
 #=

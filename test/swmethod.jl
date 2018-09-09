@@ -1,4 +1,4 @@
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Switch-method" begin
     # 400x400 real sparse

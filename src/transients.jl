@@ -38,7 +38,7 @@ function transient_bestlb(ps_data::PSAStruct,ftype::Symbol,it_range;
         end
         xtmp = [ifelse(xi<=xcrit,NaN,xi) for xi in x]
         if all(isnan.(xtmp))
-            warn("No points in portrait reach threshold [Re(z)>" *
+            @warn("No points in portrait reach threshold [Re(z)>" *
                  "$xcrit]: expand grid and recompute")
             return badresult
         end
@@ -46,7 +46,7 @@ function transient_bestlb(ps_data::PSAStruct,ftype::Symbol,it_range;
         t_pts = collect(it_range)
         nt = length(t_pts)
         bnd = zeros(nt)
-        sel_pt = Matrix{eltype(x)}(nt,2)
+        sel_pt = Matrix{eltype(x)}(undef,nt,2)
         for it in eachindex(t_pts)
             t = t_pts[it]
             eat = exp.(t.*X)
@@ -62,11 +62,11 @@ function transient_bestlb(ps_data::PSAStruct,ftype::Symbol,it_range;
                 bnds = [max(x1,x2) for (x1,x2) in zip(bnds1,bnds2)]
             end
             if all(isnan.(bnds))
-                warn("no meaningful results obtained")
+                @warn("no meaningful results obtained")
                 return badresult
             else
-                bnds = map(x->ifelse(isnan(x),0,x),bnds)
-                m,idx = findmax(bnds)
+                bnds = map(x->isnan(x) ? 0 : x,bnds)
+                m,idx = findmax(vec(bnds))
             end
             j,i = map(x->x+1,divrem(idx-1,size(X,1)))
             bnd[it] = m
@@ -86,7 +86,7 @@ function transient_bestlb(ps_data::PSAStruct,ftype::Symbol,it_range;
         end
         pts = map(x->ifelse(x<=rcrit,NaN,x), pts)
         if all(isnan.(pts))
-            warn("No points achieve threshold [|z| > $rcrit]; "
+            @warn("No points achieve threshold [|z| > $rcrit]; "
                  * "expand grid and recompute")
             return badresult
         end
@@ -107,7 +107,7 @@ function transient_bestlb(ps_data::PSAStruct,ftype::Symbol,it_range;
                 bnds2 = pk .- (pk .- nA^k) ./ ((pts -nA).*R) # Eq. 16.24
                 bnds = [max(x1,x2) for (x1,x2) in zip(bnds1,bnds2)]
             end
-            m,idx = findmax(bnds)
+            m,idx = findmax(vec(bnds))
             j,i = map(x->x+1,divrem(idx-1,size(X,1)))
             bnd[it] = m
             sel_pt[it,:] =  [x[i],y[j]]

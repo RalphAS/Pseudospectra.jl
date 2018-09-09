@@ -1,4 +1,6 @@
 Plots
 PyPlot
+PyCall
+LaTeXStrings
 LinearMaps
 GenericSVD

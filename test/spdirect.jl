@@ -1,5 +1,5 @@
 # 400x400 real sparse direct
-using Pseudospectra, Base.Test
+using Pseudospectra, Test, SparseArrays
 
 @testset "Sparse Direct" begin
     # for sparse direct, must provide axes

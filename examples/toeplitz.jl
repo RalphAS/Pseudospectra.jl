@@ -74,7 +74,7 @@ function runme(casename="limaçon",n=64,niter=100)
 #        scatter!(real(ews),imag(ews),markersize=2,c=:red,leg=false,
 #        markerstrokealpha=0.0)
     end
-    θv = linspace(0,2π,201)
+    θv = range(0, stop=2π, length=201)
 
     symcurve = [symbolfunc(cis(θ)) for θ in θv]
     plot(real(symcurve),imag(symcurve),"k")

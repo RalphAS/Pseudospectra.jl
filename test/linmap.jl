@@ -1,6 +1,6 @@
 # verify that a LinearMap makes it through the chain
 
-using Pseudospectra, LinearMaps, Base.Test
+using Pseudospectra, LinearMaps, Test
 
 @testset "Linear map" begin
 

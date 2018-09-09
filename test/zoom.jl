@@ -1,4 +1,4 @@
-using Pseudospectra, Base.Test
+using Pseudospectra, Test
 
 @testset "Zoom" begin
 
@@ -17,8 +17,7 @@ using Pseudospectra, Base.Test
     @test ps_data.zoom_pos == 1
 
     # OOB: this should cause a warning:
-    res = @test_warn "unable to zoom" zoomout!(gs,ps_data,zkw=5.0+3.5im)
-    @test res == -1
+    @test (@test_logs (:warn,r"^unable to zoom") zoomout!(gs,ps_data,zkw=5.0+3.5im)) == -1
 
     zoomout!(gs,ps_data,zkw=0.5+2.0im)
     @test ps_data.zoom_pos == 1

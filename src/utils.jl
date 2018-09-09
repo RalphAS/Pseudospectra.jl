@@ -22,7 +22,7 @@ function recalc_levels(sigmin,ax)
     err = 0
     smin,smax = extrema(sigmin)
     if smax <= smallσ
-        levels = Vector{typeof(smin)}(0)
+        levels = Vector{typeof(smin)}()
         err = -2
         return levels,err
     end
@@ -66,7 +66,7 @@ function recalc_levels(sigmin,ax)
         end
     end
     ll = length(levels)
-    levels = flipdim(levels[end:-max(floor(Int,ll/9),1):1],1)
+    levels = reverse(levels[end:-max(floor(Int,ll/9),1):1],dims=1)
     (length(levels) == 1) && (levels = levels .* ones(2))
     # upstream has commented-out normality message logic here
     return levels,err
@@ -100,7 +100,7 @@ function prettytime(ttime)
 end
 
 isvalidax(ax) = false
-function isvalidax{T<:Real}(ax::Vector{T})
+function isvalidax(ax::Vector{T}) where T<:Real
     (length(ax) == 4) && (ax[1] < ax[2]) && (ax[3] < ax[4])
 end
 
@@ -112,16 +112,16 @@ shift_axes(ax,npts) -> y,n_mirror
 function shift_axes(ax,npts)
     # note: linspace arg len::Float is ok
     if ax[4] > -ax[3]
-        tpts = floor((ax[4]/(ax[4]-ax[3]))*npts)
-        y = collect(linspace(ax[4]/(2*(tpts-1)+1),ax[4],tpts))
+        tpts = floor(Int,(ax[4]/(ax[4]-ax[3]))*npts)
+        y = collect(range(ax[4]/(2*(tpts-1)+1), stop=ax[4], length=tpts))
         n = count(x -> (x < -ax[3]),y)
         if abs(y[min(length(y),n+1)] + ax[3]) > 1e-15
             y = vcat(y[1:n],-ax[3],y[n+1:end])
         end
         num_mirror = n+1
     elseif ax[4] < -ax[3]
-        bpts = floor((ax[3] / (ax[3] - ax[4]))*npts)
-        y = collect(linspace(ax[3],ax[3]/(2*(bpts-1)+1),bpts))
+        bpts = floor(Int,(ax[3] / (ax[3] - ax[4]))*npts)
+        y = collect(range(ax[3], stop=ax[3]/(2*(bpts-1)+1), length=bpts))
         n = count(x -> (x < -ax[4]),y)
         if abs(y[max(1,n)] + ax[4]) > 1e-15
             y = vcat(y[1:n],-ax[4],y[n+1:end])
@@ -129,11 +129,11 @@ function shift_axes(ax,npts)
         num_mirror = -(length(y)-(n+1)+1)
     else
         if isodd(npts)
-            y = collect(linspace(0,ax[4],round(Int,(npts+1)/2)))
+            y = collect(range(0, stop=ax[4], length=round(Int,(npts+1)/2)))
             num_mirror = ((npts+1) >> 1) -1
         else
             step = (ax[4] - ax[3]) / npts
-            y = collect(linspace(step/2,ax[4],round(Int,npts/2)))
+            y = collect(range(step/2, stop=ax[4], length=round(Int,npts/2)))
             num_mirror = npts >> 1
         end
     end
@@ -232,7 +232,7 @@ function expandlevels(ld::LevelDesc)
         levels = ld.full_levels
         (length(levels) == 1) && (levels = levels[1]*ones(2))
     end
-    isa(levels,Range) && (levels = collect(levels))
+    isa(levels,AbstractRange) && (levels = collect(levels))
     levels
 end
 
@@ -254,4 +254,11 @@ function tidyaxes(vmin::Number,vmax::Number,tol)
     nmax = round_to*ceil(vmax/round_to)
 
     return nmin,nmax
+end
+
+macro mywarn(args...)
+    msg = args[2]
+    quote
+        @warn($msg)
+    end
 end

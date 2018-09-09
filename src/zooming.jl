@@ -51,7 +51,7 @@ function zoomin!(ps_data::PSAStruct,z,ax)
             # work out new axes
             newax = [final_rect[1]-w/4,final_rect[1]+w/4,
                      final_rect[3]-h/4,final_rect[3]+h/4]
-            copy!(newzoom.ax,newax)
+            copyto!(newzoom.ax,newax)
             final_rect = newzoom.ax # note: an alias
 
             # for real matrix, if box is almost up-down symmetric,
@@ -119,7 +119,7 @@ function zoomout!(ps_data::PSAStruct,z,ax; include_fov=false)
     else # no previous zoom entry to use; zoom out by factor of 2
         newzoom = deepcopy(ps_data.zoom_list[1])
         newzoom.computed = false
-        unshift!(ps_data.zoom_list, newzoom)
+        pushfirst!(ps_data.zoom_list, newzoom)
         zax = newzoom.ax
         ps_dict = ps_data.ps_dict
         if include_fov && !isempty(get(ps_dict,:fov,zeros(0))) &&

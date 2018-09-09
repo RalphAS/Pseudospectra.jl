@@ -17,7 +17,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 
 # normally hardwired, but change to get test coverage w/o huge problems
 # or to get reference solutions for comparison.
-type ComputeThresholds
+mutable struct ComputeThresholds
     minlancs4psa::Int # use SVD for n < this
     maxstdqr4hess::Int # use HessQR for n > this (in rectangular case)
     minnev::Int # number of ew's to acquire for projection
@@ -80,7 +80,7 @@ a Schur decomposition) the solver is much more efficient than otherwise.
 [^Trefethen1999]: L.N.Trefethen, "Computation of pseudospectra," Acta Numerica 8, 247-295 (1999).
 """
 function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
-                     myprintln=println, mywarn=warn,
+                     myprintln=println, logger=:default,
                      psatol = 1e-5)
 
     m,n = size(Targ)
@@ -127,12 +127,12 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         y, n_mirror_pts = shift_axes(ax,y_npts)
     else
         n_mirror_pts = 0
-        y = collect(linspace(ax[3],ax[4],y_npts))
+        y = collect(range(ax[3], stop=ax[4], length=y_npts))
     end
-    x = collect(linspace(ax[1],ax[2],x_npts))
+    x = collect(range(ax[1], stop=ax[2], length=x_npts))
     lx = length(x) # why??
     ly = length(y)
-    Z = ones(ly,lx)+Inf
+    Z = ones(ly,lx) .+ Inf
 
     # Trefethen/Wright projection scheme:
     if !issparse(Targ) && n==m
@@ -155,12 +155,12 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                 if proj_lev >= 0
                     ew_range = [ew_range[1] - proj_w, ew_range[2] + proj_w,
                                 ew_range[3] - proj_h, ew_range[4] + proj_h]
-                    selection = find((real(eigA) .> ew_range[1])
+                    selection = findall((real(eigA) .> ew_range[1])
                                      .& (real(eigA) .< ew_range[2])
                                      .& (imag(eigA) .> ew_range[3])
                                      .& (imag(eigA) .< ew_range[4]))
                 else
-                    selection = find(abs.(eigA) .> proj_size)
+                    selection = findall(abs.(eigA) .> proj_size)
                     proj_size *= (1/2)
                 end
                 np = length(selection)
@@ -204,8 +204,8 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                         G,r = givens(conj(Tproj[k,k+1]),
                                      conj(Tproj[k,k]-Tproj[k+1,k+1]),
                                      k+1,k)
-                        A_mul_Bc!(Tproj,G)
-                        A_mul_B!(G,Tproj)
+                        rmul!(Tproj,adjoint(G))
+                        lmul!(G,Tproj)
                     end
                     # TODO: update waitbar
                     # TODO: check for pause ll 291ff
@@ -250,35 +250,35 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
             for k=1:lx
                 zpt = x[k] + y[j]*im
                 t0 = time()
-                F = lufact(Targ - zpt*S)
+                F = lu(Targ - zpt*S)
                 σold = 0
                 qold = zeros(m)
                 β = 0
-                H = zeros(1,1)+0im
+                H = zeros(1,1) .+ 0im
                 q = normalize!(randn(n) + randn(n)*im)
                 w = similar(q)
                 v = similar(q)
                 local σ
                 for l=1:maxit
-                    A_ldiv_B!(w,F,q)
+                    ldiv!(w,F,q)
 #                    println("sizes w,q,v: ",size(w)," ",size(q)," ",size(v))
-                    Ac_ldiv_B!(v,F,w)
+                    ldiv!(v,adjoint(F),w)
                     v = v - β * qold
-                    α = real(vecdot(q,v))
+                    α = real(dot(q,v))
                     v = v - α * q
                     β = norm(v)
                     qold = q
                     q = v * (1 / β)
                     Hold = H
                     H = zeros(Tc,l+1,l+1)
-                    copy!(view(H,1:l,1:l),Hold)
+                    copyto!(view(H,1:l,1:l),Hold)
                     H[l+1,l] = β
                     H[l,l+1] = β
                     H[l,l] = α
                     # calculate eigenvalues of H
                     # if error is too big, just set a large value
                     try
-                        HEF = eigfact(H[1:l,1:l])
+                        HEF = eigen(H[1:l,1:l])
                         σ = maximum(HEF.values)
                     catch JE
                         σ = 1e308
@@ -408,18 +408,18 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     # map data (and y) if accounting for symmetry
     if n_mirror_pts < 0
         # bottom half is master
-        Z = vcat(Z,flipdim(Z[end+n_mirror_pts+1:end,:],1))
+        Z = vcat(Z,reverse(Z[end+n_mirror_pts+1:end,:],dims=1))
         y = vcat(y,-reverse(y[end+n_mirror_pts+1:end]))
     else
         if y[1] != 0
-            Z = vcat(flipdim(Z[1:n_mirror_pts,:],1),Z)
+            Z = vcat(reverse(Z[1:n_mirror_pts,:],dims=1),Z)
             y = vcat(-reverse(y[1:n_mirror_pts]),y)
         else
-            Z = vcat(flipdim(Z[2:n_mirror_pts+1,:],1),Z)
+            Z = vcat(reverse(Z[2:n_mirror_pts+1,:],dims=1),Z)
             y = vcat(-reverse(y[2:n_mirror_pts+1]),y)
         end
     end
-    ps_tiny = 10*sqrt(realmin(eltype(Z)))
+    ps_tiny = 10*sqrt(floatmin(eltype(Z)))
     (verbosity > 1) && println("range of Z: ",extrema(Z))
     clamp!(Z,ps_tiny,Inf)
 
@@ -429,9 +429,9 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         levels,err = recalc_levels(Z,ax)
         if err != 0
             if err == -1
-                mywarn("Range too small---no contours to plot. Refine grid or zoom out.")
+                @mywarn(logger,"Range too small---no contours to plot. Refine grid or zoom out.")
             elseif err == -2
-                mywarn("Matrix too non-normal---resolvent norm is "
+                @mywarn(logger,"Matrix too non-normal---resolvent norm is "
                 * "computationally infinite within current axes. Zoom out!")
             end
             return Z,x,y,levels,err,Tproj,eigAproj,algo
@@ -441,12 +441,12 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         if ((minimum(levels) > log10(maximum(Z)))
             | (maximum(levels) < log10(minimum(Z))))
             levels, err = recalc_levels(Z,ax)
-            mywarn("No contours to plot in requested range; 'Smart' levels used.")
+            @mywarn(logger,"No contours to plot in requested range; 'Smart' levels used.")
             return Z,x,y,levels,err,Tproj,eigAproj,algo
         end
     # check range of Z
         if minimum(levels) < log10(ps_tiny)+1
-            mywarn("Smallest level allowed by machine precision reached; "
+            @mywarn(logger,"Smallest level allowed by machine precision reached; "
             * "levels may be inaccurate.")
         end
     end
@@ -476,7 +476,7 @@ Compute pseudospectra of a dense triangular matrix
 - `Z::Matrix{Real}`: the singular values corresponding to the grid points `x` and `y`.
 - `algo::Symbol`: indicates algorithm used
 """
-function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
+function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
     if isreal(T)
         Twork = T .+ complex(eltype(T))(0)
     else
@@ -485,7 +485,7 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
     lx = length(x)
     ly = length(y)
     m,n = size(Twork)
-    bigsig = 0.1*realmax(real(eltype(T)))
+    bigsig = 0.1*floatmax(real(eltype(T)))
 
     if m<n
         throw(ArgumentError("Matrix size must be m x n with m >= n"))
@@ -511,9 +511,9 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
             for j=1:ly
                 for k=1:lx
                     zpt = x[k] + y[j]*im
-                    Twork[1:m+1:end] = diaga - zpt
-                    F = svdfact(Twork)
-                    Z[j,k] = minimum(F[:S])
+                    Twork[1:m+1:end] = diaga .- zpt
+                    F = svd(Twork)
+                    Z[j,k] = minimum(F.S)
                 end
             end
         else
@@ -521,9 +521,9 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
             for j=1:ly
                 for k=1:lx
                     zpt = x[k] + y[j]*im
-                    A = Twork - zpt*S
-                    F = svdfact(A)
-                    Z[j,k] = minimum(F[:S])
+                    A = Twork .- zpt*S
+                    F = svd(A)
+                    Z[j,k] = minimum(F.S)
                 end
             end
         end
@@ -541,7 +541,7 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
                 zpt = x[k]+y[j]*im
                 if m != n
                     if use_eye
-                        Twork[1:m+1:end] = diaga - zpt
+                        Twork[1:m+1:end] = diaga .- zpt
                         T1 = copy(Twork)
                     else
                         T1 = Twork - zpt*S
@@ -564,8 +564,8 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
                     T2 = T1'
                 else # square
                     algo = :sq_lanc
-                    T1[1:m+1:end] = diaga - zpt
-                    T2[1:m+1:end] = cdiaga - zpt'
+                    T1[1:m+1:end] = diaga .- zpt
+                    T2[1:m+1:end] = cdiaga .- zpt'
                 end
                 F1 = factorize(T1)
                 q = copy(qt)
@@ -576,7 +576,7 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
                 for l=1:maxit
                     # v = T1 \ (T2 \ q) - β * qold
                     v = (F1 \ (F1' \ q)) - β * qold
-                    α = real(vecdot(q,v)) # (q' * v)
+                    α = real(dot(q,v)) # (q' * v)
                     v = v - α * q
                     β = norm(v)
                     qold = copy(q)
@@ -585,14 +585,14 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, mywarn=warn)
                     H[l,l+1] = β
                     H[l,l] = α
                     try
-                        d,v = eig(H[1:l,1:l])
-                        σ = maximum(d)
+                        ep = eigen(H[1:l,1:l])
+                        σ = maximum(ep.values)
                     catch JE
                         if unwarned
                             # println("H:")
                             # display(H[1:l,1:l])
                             # println()
-                            mywarn("σ-min set to smallest possible value.")
+                            @mywarn(logger,"σ-min set to smallest possible value.")
                             unwarned = false
                         end
                         σ = bigsig
