@@ -14,3 +14,11 @@ makedocs(modules = [Pseudospectra, PseudospectraPlots],
              ]
          ]
          )
+#=
+deploydocs(repo = "github.com/RalphAS/Pseudospectra.jl.git",
+           osname = "linux",
+           julia = "0.6",
+           target = "build",
+           deps = nothing,
+           make = nothing)
+=#
