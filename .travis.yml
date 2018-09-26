@@ -1,29 +1,21 @@
-# Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
 os:
   - linux
-##  - osx
+  - osx
 julia:
-  - 0.5
-  - 0.6
-##  - release
-##  - nightly
-## matrix:
-##   allow_failures:
-##     - julia: nightly
+  - 0.7
+  - 1.0
+  - nightly
+matrix:
+   allow_failures:
+     - julia: nightly
 notifications:
   email: false
-# packager suggested this at top of script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-# We need to browbeat Travis into setting up usable PyPlot & Plots:
 before_install:
-  - julia -e 'ENV["PYTHON"] = ""; Pkg.add("PyPlot"); Pkg.build("PyPlot")'
-  - LD_PRELOAD=${HOME}/.julia/v${TRAVIS_JULIA_VERSION}/Conda/deps/usr/lib/libz.so julia test/primer.jl || true
+  - julia -e 'ENV["PYTHON"] = ""; import Pkg; Pkg.add("PyPlot"); Pkg.build("PyPlot")'
+  - julia test/primer.jl || true
 script:
-  - LD_PRELOAD=${HOME}/.julia/v${TRAVIS_JULIA_VERSION}/Conda/deps/usr/lib/libz.so julia -e 'Pkg.clone(pwd()); Pkg.build("Pseudospectra"); Pkg.test("Pseudospectra"; coverage=true)'
-  - LD_PRELOAD=${HOME}/.julia/v${TRAVIS_JULIA_VERSION}/Conda/deps/usr/lib/libz.so julia -e 'ENV["PSPLOTTER"] = "PyPlot"; Pkg.test("Pseudospectra"; coverage=true)'
+  - julia -e 'import Pkg; Pkg.clone(pwd()); Pkg.build("Pseudospectra"); Pkg.test("Pseudospectra"; coverage=true)'
+  - julia -e 'ENV["PSPLOTTER"] = "PyPlot"; import Pkg; Pkg.test("Pseudospectra"; coverage=true)'
 after_success:
-  # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("Pseudospectra")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
-  # push coverage results to Coveralls
-##  - julia -e 'cd(Pkg.dir("Pseudospectra")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  - julia -e 'import Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
