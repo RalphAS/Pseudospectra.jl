@@ -1,9 +1,9 @@
+## Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
 os:
   - linux
   - osx
 julia:
-  - 0.7
   - 1.0
   - nightly
 matrix:
@@ -15,7 +15,8 @@ before_install:
   - julia -e 'ENV["PYTHON"] = ""; import Pkg; Pkg.add("PyPlot"); Pkg.build("PyPlot")'
   - julia test/primer.jl || true
 script:
-  - julia -e 'import Pkg; Pkg.clone(pwd()); Pkg.build("Pseudospectra"); Pkg.test("Pseudospectra"; coverage=true)'
-  - julia -e 'ENV["PSPLOTTER"] = "PyPlot"; import Pkg; Pkg.test("Pseudospectra"; coverage=true)'
+  - julia --color=yes -e 'import Pkg; Pkg.build("Pseudospectra"); Pkg.test("Pseudospectra"; coverage=true)'
+  - julia --color=yes -e 'ENV["PSPLOTTER"] = "PyPlot"; import Pkg; Pkg.test("Pseudospectra"; coverage=true)'
 after_success:
-  - julia -e 'import Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia --project=test/coverage -e 'using Pkg; Pkg.instantiate()'
+  - julia --project=test/coverage test/coverage/coverage.jl
