@@ -2,19 +2,39 @@
 Toeplitz matrix examples from Trefethen & Embree, Spectra & Pseudospectra
 mainly ch. 7
 
-include() this file, then invoke M.runme() with args of interest
+Instructions
+============
+
+1. Establish a plotter for Pseudospectra:
+```
+using Pseudospectra
+setpsplotter(:PyPlot) -or- setpsplotter(:Plots)
+```
+If using Plots, you should probably set a backend first.
+
+2. `include()` this file.
+3. Invoke `M.runme()` with arguments of interest.
 =#
 module M
-using Pseudospectra, ToeplitzMatrices, Polynomials
-using PyPlot
 
+using Pseudospectra, ToeplitzMatrices, Polynomials, LinearAlgebra
 
+p = getpsplotter()
+if p == :undef
+    error("plotter must be set first")
+elseif p == :PyPlot
+    using PyPlot
+else
+    using Plots
+end
+
+"""
+Draws a spectral portrait of a Toeplitz matrix, also showing
+the locations of eigenvalues of perturbations of said matrix.
+"""
 function runme(casename="limaçon",n=64,niter=100)
 
-    # Puzzle: why does default work from Main/REPL, but not in a module?
-    setpsplotter(:PyPlot)
-    # setpsplotter(:Plots)
-    # if using Plots, you should probably(?) set a backend first
+    plotter = getpsplotter()
 
     gs = setgs()
 
@@ -67,18 +87,25 @@ function runme(casename="limaçon",n=64,niter=100)
     for it=1:niter
         pert = randn(size(A)) + im*randn(size(A))
         pn = norm(pert)
-        scale!(pert,ϵ/pn)
+        pert .*= ϵ/pn
         A1 = A + pert
         ews = eigvals(A1)
-        plot(real(ews),imag(ews),"r.")
-#        scatter!(real(ews),imag(ews),markersize=2,c=:red,leg=false,
-#        markerstrokealpha=0.0)
+        if plotter == :PyPlot
+            plot(real(ews),imag(ews),"r.")
+        else
+            scatter!(real(ews),imag(ews),markersize=2,c=:red,leg=false,
+                     markerstrokealpha=0.0)
+        end
     end
     θv = range(0, stop=2π, length=201)
 
     symcurve = [symbolfunc(cis(θ)) for θ in θv]
-    plot(real(symcurve),imag(symcurve),"k")
-    #    plot!(real(symcurve),imag(symcurve))
+    if plotter == :PyPlot
+        plot(real(symcurve),imag(symcurve),"k")
+        p = nothing
+    else
+        p = plot!(real(symcurve),imag(symcurve))
+    end
 
     #=
     # Sometimes perturbed ews are inside this curve.
@@ -89,7 +116,7 @@ function runme(casename="limaçon",n=64,niter=100)
     plot(real(symcurve),imag(symcurve),"g")
     =#
 
-    nothing
+    p
 end
 
 end

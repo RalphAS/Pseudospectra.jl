@@ -7,7 +7,7 @@ using PyPlot
 
 A = randn(100,100)
 # we want a true Schur decomposition, so force complexity
-Tschur,U,eigA  = schur(A+0im)
+Tschur,U,eigA  = schur(A .+ 0im)
 ax = [-12,12,-12,12]
 npts = 100
 opts = Dict{Symbol,Any}(:real_matrix => true)

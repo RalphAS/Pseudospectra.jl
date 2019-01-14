@@ -6,9 +6,11 @@ This file is part of Pseudospectra.jl.
 SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
-export setpsplotter, setgs, isheadless
+export setpsplotter, getpsplotter, setgs, isheadless
 
 const myplotter = Ref{Symbol}(:undef)
+
+getpsplotter() = myplotter[]
 
 """
     setpsplotter(plotter::Symbol=:default)
@@ -51,11 +53,11 @@ Assumes plotting package has been chosen via `setpsplotter()`.
 """
 function setgs(; headless=false, savefigs=true, fig_id=0)
     if myplotter[] ∈ [:default, :Plots]
-        gs = Main.PseudospectraPlots.PlotsGUIState(nothing,fig_id,nothing,
+        gs = Main.PseudospectraPlots.PlotsGUIState(nothing,fig_id,nothing;
                                                    headless=headless,
                                                    savefigs=savefigs)
     elseif myplotter[] == :PyPlot
-        gs = Main.PseudospectraMPL.MPLGUIState(nothing,fig_id,nothing,
+        gs = Main.PseudospectraMPL.MPLGUIState(nothing,fig_id,nothing;
                                                headless=headless,
                                                savefigs=savefigs)
     else
