@@ -2,7 +2,7 @@
 language: julia
 os:
   - linux
-  - osx
+##  - osx
 julia:
   - 1.0
   - nightly
@@ -14,9 +14,21 @@ notifications:
 before_install:
   - julia -e 'ENV["PYTHON"] = ""; import Pkg; Pkg.add("PyPlot"); Pkg.build("PyPlot")'
   - julia test/primer.jl || true
+
 script:
   - julia --color=yes -e 'import Pkg; Pkg.build("Pseudospectra"); Pkg.test("Pseudospectra"; coverage=true)'
   - julia --color=yes -e 'ENV["PSPLOTTER"] = "PyPlot"; import Pkg; Pkg.test("Pseudospectra"; coverage=true)'
+
+jobs:
+  include:
+    - stage: Documentation
+      julia: 1.0
+      os: linux
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        - julia --project=docs/ --color=yes docs/make.jl
+      after_success: skip
+
 after_success:
   - julia --project=test/coverage -e 'using Pkg; Pkg.instantiate()'
   - julia --project=test/coverage test/coverage/coverage.jl
