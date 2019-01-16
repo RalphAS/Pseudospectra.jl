@@ -1,4 +1,4 @@
-# Pseudospectra.jl Documentation
+# Pseudospectra.jl
 
 Pseudospectra is a Julia package for computing pseudospectra of
 non-symmetric matrices, and plotting them along with eigenvalues
@@ -34,7 +34,7 @@ of the interiors of such contours. Such plots, sometimes called
 *spectral portraits*, are the most prominent product of this package.
 
 ## Credit
-Pseudospectra.jl is essentially a translation of the acclaimed MATLAB-based EigTool
+Pseudospectra.jl is largely a translation of the acclaimed MATLAB-based EigTool
 ([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool))
 
 ## References

@@ -80,8 +80,8 @@ end
                                            v0=Vector{T}(0), have_v0=false,
                                            sigma=nothing)
 
-constructs an object to manage the Arnoldi scheme; see [`eigs`](@ref) for the
-meaning of fields.
+constructs an object to manage the Arnoldi scheme; see the documentation
+for `eigs` in the `Arpack` package for the meaning of fields.
 """
 mutable struct ArpackOptions{T}
     # Control of iterative computations:

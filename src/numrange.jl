@@ -17,7 +17,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 
 Compute points along the numerical range of a matrix.
 
-Calls `eigfact` several times.
+Note: this solves an eigensystem for each point, so may be expensive.
 """
 function numerical_range(A::AbstractMatrix, thmax=20)
     rayleighquotient(B,x) = dot(x, B * x) / dot(x,x)
@@ -49,6 +49,8 @@ end
 
 compute the numerical range (a.k.a. field of values) of a dense matrix
 then store it in the `ps_data`.
+
+Note: this solves an eigensystem for each point, so may be expensive.
 """
 function numrange!(ps_data::PSAStruct,thmax=20)
     ps_dict = ps_data.ps_dict

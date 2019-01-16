@@ -2,7 +2,7 @@
 ARPACK wrapper for use in Pseudospectra.jl
 
 This file is part of Pseudospectra.jl.
-Portions derived from the Base library of Julia.
+Portions derived from the Base library of Julia (later moved to Arpack.jl).
 
 Copyright (c) 2017 Ralph A. Smith
 Copyright (c) 2009-2016: Jeff Bezanson, Stefan Karpinski, Viral B. Shah,
@@ -22,12 +22,12 @@ import Arpack: ARPACKException, naupd, saupd, eupd_wrapper
 
 Compute (generalized) eigenpairs of `A x=λ B x` and projections.
 
-Modified version of `eigs()` (q.v.) which optionally
+Modified version of `eigs()` (from the Arpack package, q.v.) which optionally
 1. provides the projection matrices,
-2. provides intermediate states (typically for plotting), and
+2. provides intermediate states (typically for plotting).
 
-For option (2), caller must provide a `Channel` argument; in this case `xeigs`
-is implemented as a producer which fills `channel`.
+For intermediates, caller must provide a `Channel` argument;
+in this case `xeigs` is implemented as a producer which fills `channel`.
 When finished, it `put`s `(:finale, d,[v,],nconv,niter,nmult,resid[,H,V])` to
 `channel`.
 

@@ -2,9 +2,9 @@ using Documenter, Pseudospectra
 include("../src/PseudospectraPlots.jl")
 
 makedocs(modules = [Pseudospectra, PseudospectraPlots],
-         format = :html,
+         format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == true),
          sitename = "Pseudospectra.jl",
-         pages = Any[
+         pages = [
              "Home" => "index.md",
              "Usage" => "usage.md",
              "Library" => Any[
