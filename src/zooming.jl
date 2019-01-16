@@ -60,8 +60,8 @@ function zoomin!(ps_data::PSAStruct,z,ax)
                 span = final_rect[4] - final_rect[3]
                 the_diff = (final_rect[4] + final_rect[3])/span
                 if abs(the_diff) < 0.15
-                    final_rect[3] = -max(abs.(final_rect[3:4]))
-                    final_rect[4] = max(abs.(final_rect[3:4]))
+                    final_rect[3] = -maximum(abs.(final_rect[3:4]))
+                    final_rect[4] = maximum(abs.(final_rect[3:4]))
                 end
             end
             ax1 = newzoom.ax
@@ -84,8 +84,8 @@ function zoomin!(ps_data::PSAStruct,z,ax)
             span = final_rect[4] - final_rect[3]
             the_diff = (final_rect[4] + final_rect[3])/span
             if abs(the_diff) < 0.15
-                final_rect[3] = -max(abs.(final_rect[3:4]))
-                final_rect[4] = max(abs.(final_rect[3:4]))
+                final_rect[3] = -maximum(abs.(final_rect[3:4]))
+                final_rect[4] = maximum(abs.(final_rect[3:4]))
             end
         end
         copy!(newzoom.ax,final_rect)
