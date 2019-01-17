@@ -73,11 +73,11 @@ Minimal use of the REPL interface is as follows:
 using Plots
 using Pseudospectra
 A = your_matrix_generating_function()
-setpsplotter()
-gs = setgs()
 ps_data = new_matrix(A)
-options = Dict{Symbol,Any}()
-driver!(ps_data,options,gs)
+driver!(ps_data)
+# modify, e.g., for higher resolution
+options = Dict{Symbol,Any}(:npts => 100)
+driver!(ps_data,options)
 ```
 
 This should show a contour plot of `log10(ϵ)` in the vicinity of the spectrum,

@@ -90,10 +90,10 @@ function drawp(gs::MPLGUIState, p, id)
     gs.drawcmd(gs,p,id)
 end
 
+# isIJulia() = isdefined(Main, :IJulia) && Main.IJulia.inited
+
 function dcinteractive(gs::MPLGUIState,p,n)
-    if isdefined(Main, :IJulia) && Main.IJulia.inited
-        return nothing
-    end
+    # IJulia might need special handling here
     nothing
 end
 
@@ -571,7 +571,7 @@ function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     fh = figure()
     mainfignum = fh[:number]
     gs = MPLGUIState(fh,mainfignum)
-    driver!(ps_data,allopts,gs,redrawcontour)
+    driver!(ps_data,allopts,gs=gs)
     ps_data, gs
 end
 ################################################################

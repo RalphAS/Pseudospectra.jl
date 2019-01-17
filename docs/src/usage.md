@@ -4,19 +4,17 @@ and test code.
 
 # Usage
 
-Typical use of the REPL interface is as follows:
+Typical use of the package is as follows:
 
 ```julia
 using Pseudospectra
 using Plots
 A = your_matrix_generating_function()
-setpsplotter()
-gs = setgs()
 ps_data = new_matrix(A)
+driver!(ps_data)
 options = Dict{Symbol,Any}()
-driver!(ps_data,options,gs)
-# modify `options` to concentrate on a region of interest
-driver!(ps_data,options,gs)
+# modify `options` to concentrate on a region of interest, increase resolution, etc.
+driver!(ps_data,options)
 ```
 
 This should show contour plots of ``\log_{10}(\epsilon)`` in the
@@ -35,6 +33,21 @@ The integrated plotting capabilities require that the `Plots` and/or
 `PyPlot` packages be installed. These are not formal package
 requirements because much of the `Pseudospectra` package is useful
 without plotting.
+
+# Annoyances
+
+(These are problems with other packages that may arise here.  If you
+find problems with Pseudospectra.jl itself, please file an issue.)
+
+If you are using IJulia (viz. Jupyter) and Plots, you may need to
+issue `inline()` to get the plots to appear.
+
+Julia will likely warn that the plotting package is not in the
+package dependencies; this is because Pkg does not currently understand
+our handling of optional dependencies.
+
+Some of the supplementary plotting functions use LaTeX strings which
+are displayed incorrectly by certain plotting backends.
 
 # Use without the integrated plotters
 

@@ -8,7 +8,7 @@ or promotion by the authors of EigTool is implied.
 This package is released under a BSD license, as described in the LICENSE file.
 
 Julia code and supplements
-Copyright (c) 2017, Ralph Smith
+Copyright (c) 2017-2019, Ralph Smith
 
 Portions derived from EigTool:
 
@@ -23,6 +23,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 using ProgressMeter
 
 using LinearAlgebra, SparseArrays, Arpack, Printf
+using Requires
 
 export new_matrix, driver!
 export psa_compute, psa_radius, psa_abscissa
@@ -74,24 +75,32 @@ So we have something to look at while waiting for the compute engines.
 function ewsplotter end
 function plotmode end
 function replzdlg end
+
 function addmark end
 """
-    mtxexpsplot(gs::GUIState,ps_data,dt=0.1,nmax=50; gradual=false)
+    mtxexpsplot(ps_data,dt=0.1,nmax=50; gs::GUIState = defaultgs(), gradual=false)
 
 plot the evolution of `∥e^(tA)∥`.
 
 This is useful for analyzing linear initial value problems `∂x/∂t = Ax`.
 """
-function mtxexpsplot end
+function mtxexpsplot(ps_data::PSAStruct, dt=0.1, nmax=50;
+                     gs::GUIState=defaultgs(), kws...)
+    mtxexpsplot(gs, ps_data, dt=dt, nmax=nmax; kws...)
+end
 
 """
-    mtxpowersplot(gs::GUIState,ps_data,nmax=50;gradual=false)
+    mtxpowersplot(ps_data, nmax=50; gs::GUIState = defaultgs(), gradual=false)
 
 plot norms of powers of a matrix `∥A^k∥`
 
 This is useful for analyzing iterative linear algebra methods.
 """
-function mtxpowersplot end
+function mtxpowersplot(ps_data::PSAStruct, nmax=50;
+                       gs::GUIState = defaultgs(), kws...)
+    mtxpowersplot(gs, ps_data, nmax=nmax; kws...)
+end
+
 function fillopts end
 function isheadless end
 
@@ -371,7 +380,7 @@ end
 const logging_algo = Ref{Bool}(false)
 
 """
-    driver!(ps_data, opts, gs; revise_method=false)
+    driver!(ps_data, opts, gs=defaultgs(); revise_method=false)
 
 Compute pseudospectra and plot a spectral portrait.
 
@@ -390,7 +399,9 @@ entries in `opts` also apply:
  - `:arpack_opts::ArpackOptions`,
  - `:direct::Bool`.
 """
-function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
+function driver!(ps_data::PSAStruct,
+                 optsin::Dict{Symbol,Any}=Dict{Symbol,Any}(),
+                 gs::GUIState=defaultgs();
                  myprintln=println, logger=:default, revise_method=false)
     # DEVNOTE: mostly corresponds to switch_redraw.m in EigTool
     opts = fillopts(gs,optsin)
@@ -453,6 +464,16 @@ function driver!(ps_data::PSAStruct, optsin::Dict{Symbol,Any}, gs::GUIState;
             end
         else
             zoom.ax = new_ax
+        end
+
+        if haskey(opts, :npts)
+            new_npts = opts[:npts]
+            if isa(new_npts, Integer) && (new_npts > 2) && (new_npts < 2049)
+                zoom.npts = new_npts
+            else
+                @mywarn(logger,"opts[:npts] is not a valid number of points")
+                return nothing
+            end
         end
 
         psa_opts = Dict{Symbol,Any}(:levels=>expandlevels(zoom.levels),
@@ -659,5 +680,10 @@ end
 ################################################################
 # FIXME: until we think of a better way to handle this:
 include("../examples/demo_mtx.jl")
+
+function __init__()
+    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" link_pyplot()
+    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" link_plots()
+end
 
 end # module

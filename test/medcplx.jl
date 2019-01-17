@@ -11,7 +11,7 @@ using Pseudospectra, Test
     ps_data = new_matrix(A,opts)
     driver!(ps_data,opts,gs)
     @test iscomputed(ps_data)
-    modeplot(ps_data,gs,0,0.0+1.0im)
-    modeplot(ps_data,gs,1,0.0+1.0im)
+    modeplot(ps_data,0,0.0+1.0im)
+    modeplot(ps_data,1,0.0+1.0im)
 
 end

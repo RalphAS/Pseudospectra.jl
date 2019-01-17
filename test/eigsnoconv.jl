@@ -17,7 +17,8 @@ using Test, LinearAlgebra
     A = diagm(1 => ones(N-1)) + (1/4)* diagm(-1 => ones(N-1))
 
     ps_data = new_matrix(A,opts)
-    driver!(ps_data,opts,gs)
+    @test_logs (:warn, r"^incomplete") (:warn, r"^xeigs throws") (:warn, r"^xeigs failed") driver!(ps_data,opts,gs)
+#    driver!(ps_data,opts,gs)
 
     @test !iscomputed(ps_data)
 end

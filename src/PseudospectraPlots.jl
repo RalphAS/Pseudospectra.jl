@@ -78,11 +78,15 @@ function drawp(gs::PlotsGUIState, p, id)
     gs.drawcmd(gs,p,id)
 end
 
+isIJulia() = isdefined(Main, :IJulia) && Main.IJulia.inited
+
 function dcinteractive(gs::PlotsGUIState,p,n)
-    if isdefined(Main, :IJulia) && Main.IJulia.inited
-        return nothing
+    if isIJulia()
+        # CHECKME: is this always right?
+        Plots.inline()
+    else
+        Plots.gui(p)
     end
-    Plots.gui(p)
     nothing
 end
 
@@ -94,7 +98,7 @@ function dcheadless(gs::PlotsGUIState,p,n)
             fn = tempname()
         end
         png(p,fn)
-        println("graph saved in $(fn).png")
+        @info("graph saved in $(fn).png")
     end
     nothing
 end
@@ -195,6 +199,11 @@ function arnoldiplotter!(gs::PlotsGUIState,old_ax,opts,dispvec,infostr,ews,shift
 end
 
 function ewsplotter(gs::PlotsGUIState, ews::Vector, zoom)
+    if isIJulia()
+        # unless we can figure out how to overplot
+        return nothing
+    end
+
     gs.mainph = scatter(real(ews),imag(ews),color="black",
                             label="")
     setxylims!(gs.mainph,zoom.ax)

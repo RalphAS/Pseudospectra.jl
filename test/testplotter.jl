@@ -19,7 +19,7 @@ else
     psplotter = Symbol(get(ENV,"PSPLOTTER","Plots"))
     if psplotter == :Plots
         using Plots
-        pyplot() # seems most reliable for png output
+#        pyplot() # seems most reliable for png output
     elseif psplotter == :PyPlot
         using PyPlot
     else
