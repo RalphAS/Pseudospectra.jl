@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/RalphAS/Pseudospectra.jl.svg?branch=master)](https://travis-ci.org/RalphAS/Pseudospectra.jl)
 [![Coverage Status](http://codecov.io/github/RalphAS/Pseudospectra.jl/coverage.svg?branch=master)](http://codecov.io/github/RalphAS/Pseudospectra.jl?branch=master)
+[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://RalphAS.github.io/Pseudospectra.jl/dev)
 
 # Introduction
 Pseudospectra is a Julia package for computing pseudospectra of
@@ -25,7 +26,7 @@ Specifically, this package is currently limited to the unweighted 2-norm.
 
 Among other things, pseudospectra:
 * elucidate transient behavior hidden to eigen-analysis, and
-* indicate the utility of eigenvalues extracted via iterative methods like `eigs`.
+* indicate the utility of eigenvalues extracted via iterative methods like `eigs` (from the Arpack package).
 
 See [the Pseudospectra gateway](http://www.cs.ox.ac.uk/pseudospectra/intro.html)
 for details, references, and more.
@@ -39,8 +40,10 @@ code now hosted [on GitHub](https://github.com/eigtool/eigtool).
 No endorsement or promotion of Pseudospectra.jl by the authors of EigTool
 is implied.
 
-Specific documentation for Pseudospectra is a work in progress. See the
-examples and tests.
+Specific documentation for Pseudospectra is a work in progress; a draft may
+be available [here](https://RalphAS.github.io/Pseudospectra.jl/dev). See the
+examples and tests for more.
+
 
 ## Note on packaging/requirements
 The plotting interface is somewhat schizophrenic. Drivers are included
@@ -67,6 +70,7 @@ Pkg.clone("https://github.com/RalphAS/Pseudospectra.jl")
 Minimal use of the REPL interface is as follows:
 
 ```julia
+using Plots
 using Pseudospectra
 A = your_matrix_generating_function()
 setpsplotter()
