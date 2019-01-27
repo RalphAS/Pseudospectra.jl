@@ -69,7 +69,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Usage",
     "title": "Usage",
     "category": "section",
-    "text": "Typical use of the REPL interface is as follows:using Pseudospectra\nusing Plots\nA = your_matrix_generating_function()\nsetpsplotter()\ngs = setgs()\nps_data = new_matrix(A)\noptions = Dict{Symbol,Any}()\ndriver!(ps_data,options,gs)\n# modify `options` to concentrate on a region of interest\ndriver!(ps_data,options,gs)This should show contour plots of log_10(epsilon) in the vicinity of the spectrum - the standard display of a spectral portrait. Eigenvalues of A are displayed as black points, if they are available.The new_matrix function constructs a stateful object with information about A conducive to pseudospectral analysis; driver! then manages the appropriate computations and plotting."
+    "text": "Typical use of the package is as follows:using Pseudospectra\nusing Plots\nA = your_matrix_generating_function()\nps_data = new_matrix(A)\ndriver!(ps_data)\noptions = Dict{Symbol,Any}()\n# modify `options` to concentrate on a region of interest, increase resolution, etc.\ndriver!(ps_data,options)This should show contour plots of log_10(epsilon) in the vicinity of the spectrum - the standard display of a spectral portrait. Eigenvalues of A are displayed as black points, if they are available.The new_matrix function constructs a stateful object with information about A conducive to pseudospectral analysis; driver! then manages the appropriate computations and plotting."
 },
 
 {
@@ -78,6 +78,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Requirements",
     "category": "section",
     "text": "The integrated plotting capabilities require that the Plots and/or PyPlot packages be installed. These are not formal package requirements because much of the Pseudospectra package is useful without plotting."
+},
+
+{
+    "location": "usage.html#Annoyances-1",
+    "page": "Usage",
+    "title": "Annoyances",
+    "category": "section",
+    "text": "(These are problems with other packages that may arise here.  If you find problems with Pseudospectra.jl itself, please file an issue.)If you are using IJulia (viz. Jupyter) and Plots, you may need to issue inline() to get the plots to appear.Julia will likely warn that the plotting package is not in the package dependencies; this is because Pkg does not currently understand our handling of optional dependencies.Some of the supplementary plotting functions use LaTeX strings which are displayed incorrectly by certain plotting backends."
 },
 
 {
@@ -149,7 +157,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Public",
     "title": "Pseudospectra.driver!",
     "category": "function",
-    "text": "driver!(ps_data, opts, gs; revise_method=false)\n\nCompute pseudospectra and plot a spectral portrait.\n\nIf using an iterative method to get some eigenvalues and a projection, invokes that first.\n\nArguments\n\nps_data::PSAStruct: ingested matrix, as processed by new_matrix\ngs::GUIState: object handling graphical output\nopts::Dict{Symbol,Any}:\n:ax, axis limits (overrides value stored in ps_data).\nother options passed to redrawcontour, arnoldiplotter!\n\nWhen revising a spectral portrait (revise_method==true), the following entries in opts also apply:\n\n:arpack_opts::ArpackOptions,\n:direct::Bool.\n\n\n\n\n\n"
+    "text": "driver!(ps_data, opts, gs=defaultgs(); revise_method=false)\n\nCompute pseudospectra and plot a spectral portrait.\n\nIf using an iterative method to get some eigenvalues and a projection, invokes that first.\n\nArguments\n\nps_data::PSAStruct: ingested matrix, as processed by new_matrix\ngs::GUIState: object handling graphical output\nopts::Dict{Symbol,Any}:\n:ax, axis limits (overrides value stored in ps_data).\nother options passed to redrawcontour, arnoldiplotter!\n\nWhen revising a spectral portrait (revise_method==true), the following entries in opts also apply:\n\n:arpack_opts::ArpackOptions,\n:direct::Bool.\n\n\n\n\n\n"
 },
 
 {
@@ -181,7 +189,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Public",
     "title": "Pseudospectra.modeplot",
     "category": "function",
-    "text": "modeplot(ps_data,gs,pkey [,z])\n\nExtract and plot an eigenmode or pseudo-eigenmode for the matrix encapsulated in the Pseudospectra object ps_data. Use the value z if provided or prompt for one. If pkey is 1, find the pseudoeigenmode for z; otherwise find the eigenmode for the eigenvalue closest to z.\n\n\n\n\n\n"
+    "text": "modeplot(ps_data, pkey [,z])\n\nExtract and plot an eigenmode or pseudo-eigenmode for the matrix encapsulated in the Pseudospectra object ps_data. Use the value z if provided or prompt for one. If pkey is 1, find the pseudoeigenmode for z; otherwise find the eigenmode for the eigenvalue closest to z.\n\n\n\n\n\n"
 },
 
 {
@@ -237,7 +245,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Public",
     "title": "Pseudospectra.surfplot",
     "category": "function",
-    "text": "make a surface plot of the current spectral portrait\n\n\n\n\n\n"
+    "text": "make a surface plot of the current spectral portrait\n\n\n\n\n\nmake a surface plot of the current spectral portrait\n\n\n\n\n\n"
 },
 
 {
@@ -245,7 +253,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Public",
     "title": "Pseudospectra.mtxexpsplot",
     "category": "function",
-    "text": "mtxexpsplot(gs::GUIState,ps_data,dt=0.1,nmax=50; gradual=false)\n\nplot the evolution of ∥e^(tA)∥.\n\nThis is useful for analyzing linear initial value problems ∂x/∂t = Ax.\n\n\n\n\n\n"
+    "text": "mtxexpsplot(ps_data,dt=0.1,nmax=50; gs::GUIState = defaultgs(), gradual=false)\n\nplot the evolution of ∥e^(tA)∥.\n\nThis is useful for analyzing linear initial value problems ∂x/∂t = Ax.\n\n\n\n\n\n"
 },
 
 {
@@ -253,7 +261,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Public",
     "title": "Pseudospectra.mtxpowersplot",
     "category": "function",
-    "text": "mtxpowersplot(gs::GUIState,ps_data,nmax=50;gradual=false)\n\nplot norms of powers of a matrix ∥A^k∥\n\nThis is useful for analyzing iterative linear algebra methods.\n\n\n\n\n\n"
+    "text": "mtxpowersplot(ps_data, nmax=50; gs::GUIState = defaultgs(), gradual=false)\n\nplot norms of powers of a matrix ∥A^k∥\n\nThis is useful for analyzing iterative linear algebra methods.\n\n\n\n\n\n"
 },
 
 {
