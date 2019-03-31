@@ -31,6 +31,22 @@ Among other things, pseudospectra:
 See [the Pseudospectra gateway](http://www.cs.ox.ac.uk/pseudospectra/intro.html)
 for details, references, and more.
 
+## Aside: the simple interface
+To study a moderate-sized matrix with minimal user effort,
+follow this example:
+```julia
+using Plots, Pseudospectra, LinearAlgebra
+n=150
+B=diagm(1 => fill(2im,n-1)) + diagm(2 => fill(-1,n-2)) + diagm(3 => fill(2,n-3)
+  + diagm(-2 => fill(-4,n-2)) + diagm(-3 => fill(-2im, n-3));
+spectralportrait(B)
+```
+
+![example figure](https://user-images.githubusercontent.com/18298838/55284298-c4213100-5341-11e9-8718-514acdf3ab9e.png)
+
+The figure shows a section of the complex plane with eigenvalues and contours
+of `log10(ϵ)`.
+
 ## Package context
 Pseudospectra (along with a QML-based GUI, in the forthcoming PseudospectraView
 package) is essentially a translation of the acclaimed MATLAB-based EigTool

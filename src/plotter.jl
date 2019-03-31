@@ -21,6 +21,10 @@ function link_pyplot()
 end
 
 function link_plots()
+    @eval begin
+        export spectralportrait
+        function spectralportrait end
+    end
     include("PseudospectraPlots.jl")
     _enabled_plotters[:Plots] = true
 end
