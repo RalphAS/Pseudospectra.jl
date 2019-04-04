@@ -37,8 +37,7 @@ follow this example:
 ```julia
 using Plots, Pseudospectra, LinearAlgebra
 n=150
-B=diagm(1 => fill(2im,n-1)) + diagm(2 => fill(-1,n-2)) + diagm(3 => fill(2,n-3)
-  + diagm(-2 => fill(-4,n-2)) + diagm(-3 => fill(-2im, n-3));
+B=diagm(1 => fill(2im,n-1), 2 => fill(-1,n-2), 3 => fill(2,n-3), -2 => fill(-4,n-2), -3 => fill(-2im, n-3))
 spectralportrait(B)
 ```
 
