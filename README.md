@@ -47,7 +47,7 @@ The figure shows a section of the complex plane with eigenvalues and contours
 of `log10(ϵ)`.
 
 ## Package context
-Pseudospectra (along with a QML-based GUI, in the forthcoming PseudospectraView
+Pseudospectra.jl (along with a QML-based GUI, in the forthcoming PseudospectraView
 package) is essentially a translation of the acclaimed MATLAB-based EigTool
 ([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool)),
 code now hosted [on GitHub](https://github.com/eigtool/eigtool).

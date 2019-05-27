@@ -1,10 +1,12 @@
-# Caveat
-This part of the documentation is a sketch. Please refer to examples
-and test code.
-
 # Usage
 
-Typical use of the package is as follows:
+To use the plotting capabilities, one should first explicitly import
+either `Plots` or `PyPlot`.
+
+A simple interface for modestly-sized matrices is available through the
+[`spectralportrait`](@ref) function.
+
+Typical "advanced" use of the package is as follows:
 
 ```julia
 using Pseudospectra
@@ -27,14 +29,14 @@ about `A` conducive to pseudospectral analysis; `driver!` then manages
 the appropriate computations and plotting.
 
 
-# Requirements
+## Requirements
 
 The integrated plotting capabilities require that the `Plots` and/or
 `PyPlot` packages be installed. These are not formal package
 requirements because much of the `Pseudospectra` package is useful
 without plotting.
 
-# Annoyances
+## Annoyances
 
 (These are problems with other packages that may arise here.  If you
 find problems with Pseudospectra.jl itself, please file an issue.)
@@ -42,14 +44,10 @@ find problems with Pseudospectra.jl itself, please file an issue.)
 If you are using IJulia (viz. Jupyter) and Plots, you may need to
 issue `inline()` to get the plots to appear.
 
-Julia will likely warn that the plotting package is not in the
-package dependencies; this is because Pkg does not currently understand
-our handling of optional dependencies.
-
 Some of the supplementary plotting functions use LaTeX strings which
 are displayed incorrectly by certain plotting backends.
 
-# Use without the integrated plotters
+## Use without the integrated plotters
 
 One can use the [`psa_compute`](@ref) function to "simply" evaluate
 resolvent norms on a grid, as demonstrated in the `plots_minimal.jl`

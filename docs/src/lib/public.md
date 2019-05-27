@@ -1,5 +1,11 @@
 # Public interface
 
+## Simple spectral portrait
+
+```@docs
+spectralportrait
+```
+
 ## Importing a matrix or operator
 
 ```@docs

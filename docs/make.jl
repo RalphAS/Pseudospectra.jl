@@ -1,7 +1,6 @@
-using Documenter, Pseudospectra
-include("../src/PseudospectraPlots.jl")
+using Documenter, Pseudospectra, Plots
 
-makedocs(modules = [Pseudospectra, PseudospectraPlots],
+makedocs(modules = [Pseudospectra],
          format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == true),
          sitename = "Pseudospectra.jl",
          pages = [
