@@ -25,7 +25,7 @@ using ProgressMeter
 using LinearAlgebra, SparseArrays, Arpack, Printf
 using Requires
 
-export new_matrix, driver!
+export new_matrix, driver!, spectralportrait
 export psa_compute, psa_radius, psa_abscissa
 export numerical_range, numerical_abscissa
 export modeplot, mtxexpsplot, mtxpowersplot, isheadless, iscomputed
@@ -676,6 +676,56 @@ function set_method!(ps_data::PSAStruct, todirect::Bool)
     end
     ps_dict[:direct] = todirect
 end
+
+"""
+    spectralportrait(A::AbstractMatrix; npts=100) => Plots object
+
+compute pseudospectra of matrix `A` and display as a spectral portrait.
+
+Pseudospectra are computed on a grid of `npts` by `npts` points in
+the complex plane, including a neighborhood of the spectrum.
+Contour levels are `log10(ϵ)` where `ϵ` is the inverse resolvent norm.
+This is a convenience wrapper for simple cases; see the Pseudospectra
+package documentation for more elaborate interfaces.
+"""
+function spectralportrait(A0 :: AbstractMatrix; npts=100)
+    if _currentplotter[] == :undef
+        setpsplotter()
+    end
+    local ps_data
+    try
+        ps_data = new_matrix(A0)
+    catch JE
+        @warn "The spectralportrait function only works for simple cases."
+        rethrow(JE)
+    end
+    n,m = size(ps_data.matrix)
+    A = ps_data.matrix
+    ps_dict = ps_data.ps_dict
+    B = get(ps_dict,:matrix2,I)
+    eigA = ps_dict[:ews]
+    zoom = ps_data.zoom_list[ps_data.zoom_pos]
+    isempty(zoom.ax) && (zoom.ax = vec2ax(eigA))
+    psa_opts = _basic_psa_opts(zoom,ps_dict)
+    ss = size(A)
+    Z,xs,ys,t_levels,err,Tproj,eigAproj,algo = psa_compute(A,npts,
+                                                             zoom.ax,
+                                                             eigA,psa_opts,
+                                                             B)
+    if _currentplotter[] == :Plots
+        return PseudospectraPlots._portrait(xs,ys,Z,eigA)
+    else
+        PseudospectraMPL._portrait(xs,ys,Z,eigA)
+    end
+end
+
+_basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(
+    :levels=>expandlevels(zoom.levels),
+    :recompute_levels=>zoom.autolev,
+    :proj_lev=>zoom.proj_lev,
+    :scale_equal=>zoom.scale_equal,
+    :real_matrix=>ps_dict[:Aisreal],
+    :verbosity=>0)
 
 ################################################################
 # FIXME: until we think of a better way to handle this:

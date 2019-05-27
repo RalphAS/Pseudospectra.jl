@@ -16,7 +16,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraMPL
 
-using PyPlot
+using ..PyPlot
 using Pseudospectra, LinearAlgebra, Printf
 
 export MPLGUIState, psa
@@ -573,6 +573,13 @@ function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     gs = MPLGUIState(fh,mainfignum)
     driver!(ps_data,allopts,gs=gs)
     ps_data, gs
+end
+
+function _portrait(xs,ys,Z,eigA)
+    p = contour(xs,ys,log10.(Z),cmap="eigtool")
+    plot(real(eigA), imag(eigA), "k.", label="eigvals",
+         markersize=5)
+    colorbar()
 end
 ################################################################
 # Utilities

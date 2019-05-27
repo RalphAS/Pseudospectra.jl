@@ -16,7 +16,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraPlots
 
-using Plots
+using ..Plots
 using Pseudospectra, LinearAlgebra, Printf
 
 export PlotsGUIState, psa
@@ -24,7 +24,7 @@ export PlotsGUIState, psa
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
 import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
-import Pseudospectra: mtxexpsplot, mtxpowersplot, spectralportrait
+import Pseudospectra: mtxexpsplot, mtxpowersplot
 import Pseudospectra: zoomin!, zoomout!
 
 # we use these internals here:
@@ -496,46 +496,7 @@ end
 ################################################################
 # Wrappers
 
-_basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(
-    :levels=>expandlevels(zoom.levels),
-    :recompute_levels=>zoom.autolev,
-    :proj_lev=>zoom.proj_lev,
-    :scale_equal=>zoom.scale_equal,
-    :real_matrix=>ps_dict[:Aisreal],
-    :verbosity=>0)
-
-"""
-    spectralportrait(A::AbstractMatrix; npts=100) => Plots object
-
-compute pseudospectra of matrix `A` and display as a spectral portrait.
-
-Pseudospectra are computed on a grid of `npts` by `npts` points in
-the complex plane, including a neighborhood of the spectrum.
-Contour levels are `log10(ϵ)` where `ϵ` is the inverse resolvent norm.
-This is a convenience wrapper for simple cases; see the Pseudospectra
-package documentation for more elaborate interfaces.
-"""
-function spectralportrait(A0 :: AbstractMatrix; npts=100)
-    local ps_data
-    try
-        ps_data = new_matrix(A0)
-    catch JE
-        @warn "The spectralportrait function only works for simple cases."
-        rethrow(JE)
-    end
-    n,m = size(ps_data.matrix)
-    A = ps_data.matrix
-    ps_dict = ps_data.ps_dict
-    B = get(ps_dict,:matrix2,I)
-    eigA = ps_dict[:ews]
-    zoom = ps_data.zoom_list[ps_data.zoom_pos]
-    isempty(zoom.ax) && (zoom.ax = vec2ax(eigA))
-    psa_opts = _basic_psa_opts(zoom,ps_dict)
-    ss = size(A)
-    Z,xs,ys,t_levels,err,Tproj,eigAproj,algo = psa_compute(A,npts,
-                                                             zoom.ax,
-                                                             eigA,psa_opts,
-                                                             B)
+function _portrait(xs,ys,Z,eigA)
     p = contour(xs,ys,log10.(Z))
     scatter!(p, real(eigA), imag(eigA), color=:black, label="eigvals",
              markersize=2)
