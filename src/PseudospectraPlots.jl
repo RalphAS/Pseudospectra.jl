@@ -649,7 +649,11 @@ function etcgrad()
         push!(cc,col)
         vv[i]=(i-1)/(nc-1)
     end
-    ColorGradient(cc,vv)
+    if :ContinuousColorGradient in names(Plots.PlotUtils, all=true)
+        return PlotUtils.ContinuousColorGradient(cc,vv)
+    else
+        return PlotUtils.ColorGradient(cc,vv)
+    end
 end
 
 const eigtool_cgrad = etcgrad()
