@@ -12,7 +12,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
 julia = "1"
-Arpack = "0.4"
+Arpack = "0.3, 0.4"
 ProgressMeter = "1"
 Requires = "1.0"
 
