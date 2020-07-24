@@ -66,7 +66,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
     (n==m) || throw(ArgumentError("matrix must be square"))
     (isa(epsln,Real) && (epsln >= 0)) || throw(ArgumentError("ϵ must be >= 0"))
 
-    isempty(eA) && (eA = eigfact(A)[:values])
+    isempty(eA) && (eA = eigvals(A))
 
     if plotfig > 0
         figure(plotfig)
