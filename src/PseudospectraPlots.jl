@@ -51,6 +51,8 @@ mutable struct PlotsGUIState <: GUIState
     mainfignum::Int
     drawcmd # function to display a plot object (pluggable for GUI use)
     ph2 # opaque backend object for secondary plot
+    ph3 # opaque backend object for tertiary plot, if any
+    separate_subplots::Bool
     markerlist
     counter
     is_headless::Bool
@@ -58,13 +60,15 @@ mutable struct PlotsGUIState <: GUIState
     figfile
 
     function PlotsGUIState(ph=nothing,num=0,specialcmd=nothing;
-                           headless=false, savefigs=true)
+                           headless=false, savefigs=true,
+                           separate_subplots=false)
         if specialcmd == nothing
             dc = headless ? dcheadless : dcinteractive
         else
             dc = specialcmd
         end
-        new(ph,num,dc,nothing,[],0,headless,savefigs,"")
+        new(ph,num,dc,nothing,nothing,separate_subplots,
+            [],0,headless,savefigs,"")
     end
 end
 
@@ -252,8 +256,13 @@ function plotmode(gs::PlotsGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     if showlog
         p2=plot(x,abs.(q),color=:black,label="abs",xlims=(x[1],x[end]),
                 yscale=:log10,overwrite=false)
-        p3 = plot(p1,p2,layout=(2,1),overwrite=false)
-        drawp(gs,p3,2)
+        if gs.separate_subplots
+            drawp(gs,p1,2)
+            drawp(gs,p2,3)
+        else
+            p3 = plot(p1,p2,layout=(2,1),overwrite=false)
+            drawp(gs,p3,2)
+        end
     else
         drawp(gs,p1,2)
     end
@@ -307,9 +316,14 @@ function mtxpowersplot(gs::PlotsGUIState,ps_data::PSAStruct,nmax=50;
             end
             yspan = log10(ax2[4]) - log10(ax2[3])
             step = max(1,floor(yspan/3))
-            #    plot!(yticks = log10(ax2[3]):step:floor(log10(ax2[4])))
-            p3 = plot(p1,p2,layout=(2,1),overwrite=false)
-            drawp(gs,p3,2)
+        #    plot!(yticks = log10(ax2[3]):step:floor(log10(ax2[4])))
+            if gs.separate_subplots
+                drawp(gs,p1,2)
+                drawp(gs,p2,2)
+            else
+                p3 = plot(p1,p2,layout=(2,1),overwrite=false)
+                drawp(gs,p3,2)
+            end
     end
     if lbmethod != :none
         pts,bnds,sel_pt = transient_bestlb(ps_data,:powers,0:nmax,
@@ -408,8 +422,13 @@ function mtxexpsplot(gs::PlotsGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
             yspan = log10(ax2[4]) - log10(ax2[3])
             step = max(1,floor(yspan/3))
         #    plot!(yticks = log10(ax2[3]):step:floor(log10(ax2[4])))
-            p3 = plot(p1,p2,layout=(2,1),overwrite=false)
-            drawp(gs,p3,2)
+            if gs.separate_subplots
+                drawp(gs,p1,2)
+                drawp(gs,p2,3)
+            else
+                p3 = plot(p1,p2,layout=(2,1),overwrite=false)
+                drawp(gs,p3,2)
+            end
     end
 
     while !stop_trans
