@@ -25,7 +25,7 @@ export MPLGUIState, psa
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
 import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
 import Pseudospectra: mtxexpsplot, mtxpowersplot
-import Pseudospectra: zoomin!, zoomout!
+import Pseudospectra: zoomin!, zoomout!, _portrait
 
 # we use these internals here:
 import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
@@ -225,7 +225,7 @@ function selectfig(gs::MPLGUIState,main::Bool)
         else
             fh = figure()
             gs.mainph = fh
-            gs.mainfignum = fh[:number]
+            gs.mainfignum = fh.number
         end
     else
         if gs.secondaryfignum > 0
@@ -233,7 +233,7 @@ function selectfig(gs::MPLGUIState,main::Bool)
         else
             fh = figure()
             gs.secondaryph = fh
-            gs.secondaryfignum = fh[:number]
+            gs.secondaryfignum = fh.number
         end
     end
 end
@@ -569,7 +569,7 @@ function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     allopts = merge(default_opts,opts)
     ps_data = new_matrix(A,allopts)
     fh = figure()
-    mainfignum = fh[:number]
+    mainfignum = fh.number
     gs = MPLGUIState(fh,mainfignum)
     driver!(ps_data,allopts,gs=gs)
     ps_data, gs
@@ -577,9 +577,10 @@ end
 
 function _portrait(xs,ys,Z,eigA)
     p = contour(xs,ys,log10.(Z),cmap="eigtool")
-    plot(real(eigA), imag(eigA), "k.", label="eigvals",
+    plot(real(eigA), imag(eigA), "k.", # label="eigvals",
          markersize=5)
     colorbar()
+    return p
 end
 ################################################################
 # Utilities

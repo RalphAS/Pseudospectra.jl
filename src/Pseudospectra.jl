@@ -64,6 +64,7 @@ include("types.jl")
 function redrawcontour end
 function surfplot end
 function arnoldiplotter! end
+function _portrait end
 
 """
     ewsplotter(gs::GUIState, ews::Vector, zoom)
@@ -712,11 +713,7 @@ function spectralportrait(A0 :: AbstractMatrix; npts=100)
                                                              zoom.ax,
                                                              eigA,psa_opts,
                                                              B)
-    if _currentplotter[] == :Plots
-        return PseudospectraPlots._portrait(xs,ys,Z,eigA)
-    else
-        PseudospectraMPL._portrait(xs,ys,Z,eigA)
-    end
+    return _portrait(xs,ys,Z,eigA)
 end
 
 _basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(

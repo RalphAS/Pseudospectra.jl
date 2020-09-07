@@ -234,7 +234,7 @@ function pspa_2way_imag(A,E,epsln,x,ywant,iter,imagtol,plotfig,verbosity)
                 j = check
                 Ashift = A - (x + im*y[j])*I
                 u,s,v = svd(Ashift)
-                minval,minind = findmin(abs.(s-epsln))
+                minval,minind = findmin(abs.(s .- epsln))
                 if minind == n
                     push!(indx2,j)
                 end

@@ -90,7 +90,7 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
         rold = -1e-6
         r,ind = findmax(abs.(eA)) # initial iterate
         theta = angle.(eA[ind])
-        (length(theta) == 1) && (theta = [theta])
+        (length(theta) == 1) && (theta = [theta...])
         thetaold = theta
         iter = 0
         no_imageig = false

@@ -93,7 +93,7 @@ function oneeigcond(T0,ew0,verbosity; dlg=replqdlg, max_its=3)
     else
         # inverse iteration
         if issparse(T)
-            F = lufact(T)
+            F = lu(T)
         end
         wb_size = 200
         v0 = normalize!(randn(n) .+ 0im)
@@ -200,9 +200,9 @@ function psmode_inv_lanczos(A,q0::Vector,z::Complex,tol,num_its;
     else
         H = zeros(num_its+1,num_its+1)
         if issparse(A)
-            F = lufact(A-z*I)
+            F = lu(A-z*I)
             # use UMFPACK factor method to avoid this:
-            # Fp = lufact(A'-conj(z)*I)
+            # Fp = lu(A'-conj(z)*I)
         else
             T1 = A - z * I
             T2 = T1'

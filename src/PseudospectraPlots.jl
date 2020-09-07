@@ -25,7 +25,7 @@ export PlotsGUIState, psa
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
 import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
 import Pseudospectra: mtxexpsplot, mtxpowersplot
-import Pseudospectra: zoomin!, zoomout!
+import Pseudospectra: zoomin!, zoomout!, _portrait
 
 # we use these internals here:
 import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
@@ -498,7 +498,7 @@ end
 
 function _portrait(xs,ys,Z,eigA)
     p = contour(xs,ys,log10.(Z))
-    scatter!(p, real(eigA), imag(eigA), color=:black, label="eigvals",
+    scatter!(p, real(eigA), imag(eigA), color=:black, # label="eigvals",
              markersize=2)
     p
 end
