@@ -163,7 +163,8 @@ function surfplot(gs::PlotsGUIState, ps_data::PSAStruct, opts)
     drawp(gs,ph,2)
 end
 
-function arnoldiplotter!(gs::PlotsGUIState,old_ax,opts,dispvec,infostr,ews,shifts)
+function arnoldiplotter!(gs::PlotsGUIState,old_ax,opts,dispvec,infostr,
+                         ews,shifts,state)
     if gs.mainph == nothing
         ax = vec2ax(dispvec)
     else
@@ -196,6 +197,7 @@ function arnoldiplotter!(gs::PlotsGUIState,old_ax,opts,dispvec,infostr,ews,shift
     # drawcmd() should force a redraw
     drawp(gs,gs.mainph,1)
     #   sleep(0.01)
+    return nothing
 end
 
 function ewsplotter(gs::PlotsGUIState, ews::Vector, zoom)

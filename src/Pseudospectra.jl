@@ -550,13 +550,16 @@ function driver!(ps_data::PSAStruct,
         local ews,H,V
         local nconv,niter,nmult
         old_ax = zeros(0)
+        (verbosity > 1) && println("calling xeigs w/ $ao")
         chnl = Channel(xeigsproducer)
         xeigs_result = take!(chnl)
+        ap_state = nothing
         while xeigs_result[1] ∉ [:finale,:failure]
             the_key,dispvec,the_str,the_ews,the_shifts = xeigs_result
             if !isheadless(gs)
-                arnoldiplotter!(gs,old_ax,opts,dispvec,the_str,the_ews,
-                                the_shifts)
+                ap_state = arnoldiplotter!(gs,old_ax,opts,dispvec,
+                                           the_str,the_ews, the_shifts,
+                                           ap_state)
             end # if gs
             xeigs_result = take!(chnl)
         end
@@ -566,13 +569,14 @@ function driver!(ps_data::PSAStruct,
         end
         the_key,ews,v,nconv,niter,nmult,resid,H,V = xeigs_result
         if verbosity > 0
-            println("xeigs: $nconv of $(ao.nev) converged in $niter "
+            println("xeigs: $nconv of $(ao.nev) converged in $niter iters "
                     * "($nmult MxV)")
         end
         if verbosity > 1
             println("xeigs ews:")
             display(ews); println()
         end
+        ews = filter(x->!isnan(x), ews)
 
         # We basically replace A with H, saving some projection information,
         # and proceed with the dense matrix algorithms.

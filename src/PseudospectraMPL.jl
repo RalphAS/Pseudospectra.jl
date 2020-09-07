@@ -174,7 +174,8 @@ function surfplot(gs::MPLGUIState, ps_data::PSAStruct, opts)
     drawp(gs,gs.mainph,2)
 end
 
-function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts)
+function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts,
+                         state)
     if gs.mainph == nothing
         ax = vec2ax(dispvec)
     else
@@ -211,6 +212,7 @@ function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts)
         drawp(gs,gs.mainph,1)
         draw()
     #   sleep(0.01)
+    return nothing
 end
 
 """
