@@ -11,10 +11,10 @@ Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-julia = "1"
-Arpack = "0.3, 0.4"
+Arpack = "0.3, 0.4, 0.5"
 ProgressMeter = "1"
 Requires = "1.0"
+julia = "1"
 
 [extras]
 GenericSVD = "01680d73-4ee2-5a08-a1aa-533608c188bb"
