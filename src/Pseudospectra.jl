@@ -735,6 +735,8 @@ include("../examples/demo_mtx.jl")
 function __init__()
     @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" link_pyplot()
     @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" link_plots()
+    # GLMakie="e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+    @require AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e" link_makie()
 end
 
 end # module

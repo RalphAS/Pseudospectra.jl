@@ -10,8 +10,13 @@ export setpsplotter, getpsplotter, setgs, isheadless, defaultgs
 
 const _currentplotter = Ref{Symbol}(:undef)
 
-const _available_plotters = Symbol[:PyPlot, :Plots]
-const _enabled_plotters = Dict{Symbol,Bool}(:PyPlot => false, :Plots => false)
+const _available_plotters = Symbol[:PyPlot, :Plots,
+                                   :Makie,
+                                   ]
+const _enabled_plotters = Dict{Symbol,Bool}(
+    :PyPlot => false, :Plots => false,
+    :Makie => false,
+)
 
 const _currentgs = Ref{Union{Nothing,GUIState}}(nothing)
 
@@ -23,6 +28,11 @@ end
 function link_plots()
     include("PseudospectraPlots.jl")
     _enabled_plotters[:Plots] = true
+end
+
+function link_makie()
+    include("PseudospectraMakie.jl")
+    _enabled_plotters[:Makie] = true
 end
 
 getpsplotter() = _currentplotter[]
@@ -44,7 +54,7 @@ function setpsplotter(plotter::Symbol=:default)
         end
     end
     if plotter ∉ _available_plotters
-        throw(ArgumentError("plotter argument must be :Plots or :PyPlot"))
+        throw(ArgumentError("plotter argument must be in $_available_plotters"))
     end
     if !_enabled_plotters[plotter]
         error("selected or default plotter '$plotter' is not enabled")
@@ -67,6 +77,10 @@ function setgs(; headless=false, savefigs=true, fig_id=0)
                                                    savefigs=savefigs)
     elseif _currentplotter[] == :PyPlot
         gs = PseudospectraMPL.MPLGUIState(nothing,fig_id,nothing;
+                                               headless=headless,
+                                               savefigs=savefigs)
+    elseif _currentplotter[] == :Makie
+        gs = PseudospectraMakie.MakieGUIState(nothing,fig_id,nothing;
                                                headless=headless,
                                                savefigs=savefigs)
     else

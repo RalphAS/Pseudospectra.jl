@@ -22,6 +22,8 @@ else
 #        pyplot() # seems most reliable for png output
     elseif psplotter == :PyPlot
         using PyPlot
+    elseif psplotter == :Makie
+        using GLMakie
     else
         error("invalid ENV[\"PSPLOTTER\"]")
     end

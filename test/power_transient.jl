@@ -1,4 +1,4 @@
-using Pseudospectra, Test
+using Pseudospectra, Test, LinearAlgebra
 
 # Toeplitz matrix from S&P, Ch. 16
 # Need a large domain for lower bound computation.

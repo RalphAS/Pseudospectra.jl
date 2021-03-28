@@ -64,6 +64,7 @@ examples and tests for more.
 The plotting interface is somewhat schizophrenic. Drivers are included
 for Plots.jl and/or PyPlot.jl (i.e., PyPlot is a useful back end for
 Plots as used here; other Plots backends have been partially tested).
+Experimental support for Makie.jl is also available.
 
 Although this package is designed with an eye to plotting results,
 the computational routines are usable without a plotting package,
@@ -75,10 +76,10 @@ Some functions used for examples require other packages. They should
 give a useful complaint if invoked without that support.
 
 # Installation
-Until this project is mature enough to be registered, install by
-
+Until this project is mature enough to be registered, install by adding this repository
+explicitly with the package manager.
 ```julia
-Pkg.clone("https://github.com/RalphAS/Pseudospectra.jl")
+Pkg.add("https://github.com/RalphAS/Pseudospectra.jl")
 ```
 
 # Basic usage
