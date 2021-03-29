@@ -16,7 +16,8 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraMakie
 
-using AbstractPlotting, PlotUtils
+using ..AbstractPlotting
+using PlotUtils
 using Pseudospectra, LinearAlgebra, Printf
 using Colors: RGBA, RGB
 
@@ -298,6 +299,8 @@ function plotmode(gs::MakieGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     l2=lines!(ax1,x,abs.(q),color=:black)
     l3=lines!(ax1,x,-abs.(q),color=:black)
     xlims!(ax1,(x[1],x[end]))
+    # this should not be needed
+    ylims!(ax1,(-1.0,1.0))
     leg = fig[1,2] = Legend(fig, [l1,l2],["realpt", "abs"])
 
 
@@ -305,6 +308,8 @@ function plotmode(gs::MakieGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
         # TODO: log ticks
         ax2, l2b = lines(fig[2,1],x,log10.(abs.(q)),color=:black)
         xlims!(ax2,x[1],x[end])
+        # this should not be needed
+        ylims!(ax2,(-10.0,0.0))
         ax2.ylabel = "log₁₀(|xⱼ|)"
         ax2.xlabel = "j"
     else
@@ -572,13 +577,14 @@ end
 # Wrappers
 
 function _portrait(xs,ys,Z,eigA)
-    p = Scene()
-    c = contour!(p,xs,ys,log10.(Z'))
-    ax = getxylims(p)
+    fig = Figure()
+    ax1 = fig[1,1] = Axis(fig)
+    c = contour!(ax1,xs,ys,log10.(Z'))
+    ax = getxylims(fig)
     ms = MARKER_RATIO[] * (ax[2] - ax[1])
-    scatter!(p, real(eigA), imag(eigA), color=:black, # label="eigvals",
+    scatter!(ax1, real(eigA), imag(eigA), color=:black, # label="eigvals",
              markersize=ms)
-    p
+    fig
 end
 
 """
@@ -609,7 +615,7 @@ function getxylims(ph)
         sl = scene_limits(ph)
     else
         ctx = content(ph[1,1])
-        sl = ctx.limits[]
+        sl = ctx.finallimits[]
     end
     if sl === nothing
         return fill(0.0,4)
@@ -642,10 +648,10 @@ end
 function addmark(gs::MakieGUIState,z,mykey)
     x,y = real(z),imag(z)
     if mykey == :pseudo
-        mkey = :o
+        mkey = :circle
         ckey = :magenta
     elseif mykey == :eigen
-        mkey = :o
+        mkey = :circle
         ckey = :cyan
     else
         mkey = :x
