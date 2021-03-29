@@ -1,7 +1,7 @@
 # Usage
 
 To use the plotting capabilities, one should first explicitly import
-either `Plots` or `PyPlot`.
+either `Plots` or `PyPlot`. (An interface to `Makie` is in progress.)
 
 A simple interface for modestly-sized matrices is available through the
 [`spectralportrait`](@ref) function.
