@@ -15,6 +15,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 [compat]
 Arpack = "0.3, 0.4, 0.5"
 PlotUtils = "1.0"
+Colors = "0.12"
 ProgressMeter = "1"
 Requires = "1.0"
 julia = "1"
