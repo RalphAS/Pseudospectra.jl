@@ -52,3 +52,9 @@ are displayed incorrectly by certain plotting backends.
 One can use the [`psa_compute`](@ref) function to "simply" evaluate
 resolvent norms on a grid, as demonstrated in the `plots_minimal.jl`
 script in the examples folder.
+
+## Use with extended precision
+
+The dense-matrix methods should work with matrix element types of extended precision
+such as `Float128` and `BigFloat`, but they require linear algebra routines which
+are implemented in the `GenericLinearAlgebra` and `GenericSchur` packages.
