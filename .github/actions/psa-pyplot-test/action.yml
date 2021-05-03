@@ -4,8 +4,10 @@ description: 'variant of tests with PyPlot'
 runs:
   using: 'composite'
   steps:
-    - run: julia --project=. -e 'using Pkg; Pkg.add("PyPlot")'
+    - run: julia --project=. -e 'using Pkg; Pkg.add("PyCall"); Pkg.build("PyCall")'
       shell: bash
+      env:
+        PYTHON: ""
     - run: julia --color=yes --project=. -e 'using Pkg; Pkg.test("Pseudospectra"; coverage=true);'
       shell: bash
       env:
