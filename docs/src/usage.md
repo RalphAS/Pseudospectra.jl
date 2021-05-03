@@ -56,5 +56,14 @@ script in the examples folder.
 ## Use with extended precision
 
 The dense-matrix methods should work with matrix element types of extended precision
-such as `Float128` and `BigFloat`, but they require linear algebra routines which
+such as `Float128` and `BigFloat`, but they require linear algebra methods which
 are implemented in the `GenericLinearAlgebra` and `GenericSchur` packages.
+
+```julia
+using Pseudospectra, Plots, GenericLinearAlgebra, GenericSchur, Quadmath
+Aq = Float128.(A_matrix)
+spectralportrait(A)
+```
+
+Note that linear algebra with non-BLAS types is expensive, so computation takes many
+minutes even for moderate-sized matrices.

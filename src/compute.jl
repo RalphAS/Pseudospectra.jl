@@ -530,7 +530,7 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
     else
         qt = copy(q0)
         maxit = psathresholds.maxit_lancs
-        H = zeros(maxit+1,maxit+1)
+        H = zeros(real(eltype(Twork)),maxit+1,maxit+1)
         if m==n
             T1 = copy(Twork)
             T2 = T1'

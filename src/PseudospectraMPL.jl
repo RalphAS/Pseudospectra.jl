@@ -122,7 +122,7 @@ function redrawcontour(gs::MPLGUIState, ps_data::PSAStruct, opts)
     if !zoom.computed || isempty(zoom.Z)
         error("should not get here w/ uncomputed zoom")
     end
-    eigA = ps_dict[:proj_ews]
+    eigA = ComplexF64.(ps_dict[:proj_ews])
         figure(gs.mainfignum) # in case the user looked elsewhere
         clf()
         !isempty(eigA) && plot(real(eigA),imag(eigA),"k.")

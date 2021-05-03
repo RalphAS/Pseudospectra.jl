@@ -1,6 +1,6 @@
 name = "Pseudospectra"
 uuid = "d6c5b33e-0240-5bd5-a771-a97ae748a961"
-version = "0.2-DEV"
+version = "0.2.0-DEV"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
@@ -14,19 +14,20 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
 Arpack = "0.3, 0.4, 0.5"
-PlotUtils = "1.0"
 Colors = "0.12"
+PlotUtils = "1.0"
 ProgressMeter = "1"
 Requires = "1.0"
 julia = "1"
 
 [extras]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
-GenericSVD = "01680d73-4ee2-5a08-a1aa-533608c188bb"
+GenericLinearAlgebra = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
+GenericSchur = "c145ed77-6b09-5dd9-b285-bf645a82121e"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Plots", "PyPlot", "LinearMaps", "GenericSVD"]
+test = ["Test", "Plots", "PyPlot", "LinearMaps", "GenericLinearAlgebra", "GenericSchur"]
