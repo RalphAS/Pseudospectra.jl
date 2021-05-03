@@ -709,6 +709,10 @@ function spectralportrait(A0 :: AbstractMatrix; npts=100)
     ps_dict = ps_data.ps_dict
     B = get(ps_dict,:matrix2,I)
     eigA = ps_dict[:ews]
+    if isempty(eigA)
+        @error """Unable to proceed without eigenvalues; for non-BLAS types
+        import GenericLinearAlgebra and GenericSchur."""
+    end
     zoom = ps_data.zoom_list[ps_data.zoom_pos]
     isempty(zoom.ax) && (zoom.ax = vec2ax(eigA))
     psa_opts = _basic_psa_opts(zoom,ps_dict)

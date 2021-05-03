@@ -522,18 +522,17 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
                 for k=1:lx
                     zpt = x[k] + y[j]*im
                     A = Twork .- zpt*S
-                    F = svd(A)
+                    F = svd!(A)
                     Z[j,k] = minimum(F.S)
                 end
             end
         end
     else
-        qt = copy(q0)
         maxit = psathresholds.maxit_lancs
         H = zeros(real(eltype(Twork)),maxit+1,maxit+1)
         if m==n
             T1 = copy(Twork)
-            T2 = T1'
+            # T2 = T1'
         end
         unwarned = true
         for j=1:ly
@@ -561,14 +560,17 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
                         algo = ifelse(use_eye,:rect_qr,:rect_qz)
                     end
                     T1 = triu(T1[1:n,1:n])
-                    T2 = T1'
+                    # T2 = T1'
                 else # square
                     algo = :sq_lanc
                     T1[1:m+1:end] = diaga .- zpt
-                    T2[1:m+1:end] = cdiaga .- zpt'
+                    # T2[1:m+1:end] = cdiaga .- zpt'
+                end
+                if !istriu(T1)
+                    @warn "psa-lancz: not UT"
                 end
                 F1 = factorize(T1)
-                q = copy(qt)
+                q = copy(q0)
                 qold = zeros(n)
                 β = 0.0
                 σold = 0.0
@@ -585,13 +587,21 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
                     H[l,l+1] = β
                     H[l,l] = α
                     try
-                        ep = eigen(H[1:l,1:l])
-                        σ = maximum(ep.values)
+                        ewp = eigvals(H[1:l,1:l])
+                        # eigvals may return complex eltype even if actually real
+                        σ = maximum(abs.(ewp))
+                        # if !all(isreal.(ewp))
+                        #     @warn "psa-lancs: eigval anomaly $ewp"
+                        #     # Should we ask users to report this?
+                        # end
                     catch JE
+                        # We want a fallback for convergence failure, but throw in
+                        # other cases.
+                        # WARNING: this is fragile, depends on library internals
+                        if !isa(JE, LinearAlgebra.LAPACKException)
+                            rethrow(JE)
+                        end
                         if unwarned
-                            # println("H:")
-                            # display(H[1:l,1:l])
-                            # println()
                             @mywarn(logger,"σ-min set to smallest possible value.")
                             unwarned = false
                         end
