@@ -1,0 +1,12 @@
+name: 'Run tests with PyPlot backend'
+description: 'variant of tests with PyPlot'
+
+runs:
+  using: 'composite'
+  steps:
+    - run: julia --project=. -e 'using Pkg; Pkg.add("PyPlot")'
+      shell: bash
+    - run: julia --color=yes --project=@. -e 'using Pkg; Pkg.test(; coverage=true);'
+      shell: bash
+      env:
+	PSPLOTTER: PyPlot
