@@ -9,4 +9,4 @@ runs:
     - run: julia --color=yes --project=@. -e 'using Pkg; Pkg.test(; coverage=true);'
       shell: bash
       env:
-	PSPLOTTER: PyPlot
+	PSPLOTTER: 'PyPlot'
