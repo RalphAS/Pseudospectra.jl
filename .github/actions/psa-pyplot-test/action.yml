@@ -6,7 +6,7 @@ runs:
   steps:
     - run: julia --project=. -e 'using Pkg; Pkg.add("PyPlot")'
       shell: bash
-    - run: julia --color=yes --project=@. -e 'using Pkg; Pkg.test(; coverage=true);'
+    - run: julia --color=yes --project=. -e 'using Pkg; Pkg.test("Pseudospectra"; coverage=true);'
       shell: bash
       env:
-	PSPLOTTER: 'PyPlot'
+        PSPLOTTER: PyPlot
