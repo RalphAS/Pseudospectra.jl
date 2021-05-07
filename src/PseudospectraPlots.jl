@@ -239,20 +239,33 @@ function plotmode(gs::PlotsGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     # upstream tries to fetch psmode_x_points_ from base workspace
     x = collect(1:length(q))
     showlog = sum(abs.(diff(q))) * (1/length(q)) >= 10*eps()
-    if pseudo
-        the_str = @sprintf("\$\\epsilon = %15.2e\$",Ss[end])
+    if Plots.backend() isa Plots.GRBackend
+        if pseudo
+            the_str = @sprintf("\\epsilon = %9.2e",Ss[end])
+        else
+            the_rel = approx ? "\\approx" : "="
+            the_str = "\\kappa(\\lambda) " * the_rel *
+                @sprintf("%9.2e",the_cond)
+        end
+        λ_str = @sprintf("%12g%+12gi",real(z),imag(z))
+        title_str = "\$\\textrm{$(modestr)mode:}\\ \\lambda=" * λ_str * ",\\ " * the_str * "\$"
     else
-        the_rel = approx ? "\\approx" : "="
-        the_str = "\$\\kappa(\\lambda) " * the_rel *
-            @sprintf("%15.2e\$",the_cond)
+        if pseudo
+            the_str = @sprintf("\$\\epsilon = %9.2e\$",Ss[end])
+        else
+            the_rel = approx ? "\\approx" : "="
+            the_str = "\$\\kappa(\\lambda) " * the_rel *
+                @sprintf("%9.2e\$",the_cond)
+        end
+        λ_str = @sprintf("%12g%+12gi",real(z),imag(z))
+        title_str = "$(modestr)mode: \$\\lambda=" * λ_str * "\$, " * the_str
     end
-    λ_str = @sprintf("%12g%+12gi",real(z),imag(z))
+
     p1=plot(x,real.(q),color=the_col,label="realpt",xlims=(x[1],x[end]),
             overwrite=false)
     plot!(p1,x,abs.(q),color=:black,label="abs")
     plot!(p1,x,-abs.(q),color=:black,label="")
-    title!(p1,"$(modestr)mode: " * the_str *
-           "\n\$\\lambda=" * λ_str * "\$")
+    title!(p1,title_str)
     if showlog
         p2=plot(x,abs.(q),color=:black,label="abs",xlims=(x[1],x[end]),
                 yscale=:log10,overwrite=false)
