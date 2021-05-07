@@ -13,7 +13,14 @@ License-Filename: LICENSES/MIT-Expat
 =#
 
 import LinearAlgebra: BlasInt, checksquare
-import Arpack: ARPACKException, naupd, saupd, eupd_wrapper
+import Arpack: naupd, saupd, eupd_wrapper
+if isdefined(Arpack, :ARPACKException)
+    using Arpack: ARPACKException
+else
+    struct ARPACKException <: Exception
+        info
+    end
+end
 
 """
     xeigs(A, B, channel=nothing; nev=6, ncv=max(20,2*nev+1), which=:LM,
