@@ -11,6 +11,7 @@ using Pseudospectra, Test
     ps_data = new_matrix(A,opts)
     driver!(ps_data,opts,gs)
     @test iscomputed(ps_data)
+    @test ps_data.ps_dict[:algo] == :sparse_direct
     ps_data_dir = deepcopy(ps_data)
 
     Pseudospectra.set_method!(ps_data,false)
@@ -20,6 +21,7 @@ using Pseudospectra, Test
 
     driver!(ps_data,opts,gs,revise_method=true)
     @test iscomputed(ps_data)
+    @test ps_data.ps_dict[:algo] == :rect_qr
 
     # first ARPACK, then direct
     opts = Dict{Symbol,Any}(:ARPACK_plots => false,:npts=>40,
@@ -28,6 +30,7 @@ using Pseudospectra, Test
     ps_data = new_matrix(A,opts)
     driver!(ps_data,opts,gs)
     @test iscomputed(ps_data)
+    @test ps_data.ps_dict[:algo] == :rect_qr
     ps_data_arpack = deepcopy(ps_data)
 
     Pseudospectra.set_method!(ps_data,true)
@@ -35,6 +38,7 @@ using Pseudospectra, Test
     opts = Dict{Symbol,Any}(:direct => true,:npts=>24,:ax => [-10,100,-50,50])
     driver!(ps_data,opts,gs,revise_method=true)
     @test iscomputed(ps_data)
+    @test ps_data.ps_dict[:algo] == :sparse_direct
 
     # first ARPACK, then with new opts
     ps_data = deepcopy(ps_data_arpack)

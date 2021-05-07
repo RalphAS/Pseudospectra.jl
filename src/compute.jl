@@ -233,7 +233,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
             end
         end
     else # matrix is dense
-        step = get_step_size(m,ly,:psacore)
+        step = _get_step_size(m,ly,real(eltype(Tproj)))
         for j=ly:-step:1
             # TODO: check for pause
             # TODO: check for cancel
@@ -347,6 +347,17 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         end
     end
     return Z,x,y,levels,err,Tproj,eigAproj,algo
+end
+
+function _get_step_size(n,ly,T)
+    nsmall =  precision(T) <= 53 ? 8 : 20
+    if n < 100
+        step = max(1,floor(Int,ly/nsmall))
+    else
+        step = min(ly,max(1,floor(Int,4*ly/n)))
+    end
+    # upstream decreases by factor of 4 if fast implementation is missing
+    return step
 end
 
 # Trefethen/Wright projection scheme:

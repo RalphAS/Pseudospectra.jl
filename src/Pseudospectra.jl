@@ -499,6 +499,7 @@ function driver!(ps_data::PSAStruct,
 
         # FIXME: handle projection properly
         ps_dict[:proj_ews] = eigAproj
+        ps_dict[:algo] = algo
 
         if err != 0
             @mywarn(logger,"PSA computation failed")

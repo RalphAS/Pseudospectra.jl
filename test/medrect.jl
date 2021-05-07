@@ -11,4 +11,5 @@ using Pseudospectra, Test
     ps_data = new_matrix(A,opts)
     driver!(ps_data,opts,gs)
     @test iscomputed(ps_data)
+    @test ps_data.ps_dict[:algo] == :rect_qr
 end

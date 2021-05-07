@@ -11,6 +11,7 @@ using Pseudospectra, Test
     ps_data = new_matrix(A,opts)
     driver!(ps_data,opts,gs)
     @test iscomputed(ps_data)
+    @test ps_data.ps_dict[:algo] == :sq_lanc
     modeplot(ps_data,0,0.0+1.0im)
     modeplot(ps_data,1,0.0+1.0im)
 

@@ -140,15 +140,6 @@ function shift_axes(ax,npts)
     return y,num_mirror
 end
 
-function get_step_size(n,ly,routine)
-    if n < 100
-        step = max(1,floor(Int,ly/8))
-    else
-        step = min(ly,max(1,floor(Int,4*ly/n)))
-    end
-    # upstream decreases by factor of 4 if fast implementation is missing
-    return step
-end
 
 """
 Prompt user for key character, with optional explanatory details.

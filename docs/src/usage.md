@@ -50,8 +50,17 @@ are displayed incorrectly by certain plotting backends.
 ## Use without the integrated plotters
 
 One can use the [`psa_compute`](@ref) function to "simply" evaluate
-resolvent norms on a grid, as demonstrated in the `plots_minimal.jl`
-script in the examples folder.
+resolvent norms on a grid, as follows:
+```julia
+using LinearAlgebra, Pseudospectra
+# matrix must be complex to get a true Schur decomposition
+A = your_matrix_generator() .+ 0im
+Tschur, U, eigA = schur(A)
+ax = [-3,3,-3,3] # domain of results
+npts = 100  # mesh size
+opts = Dict{Symbox,Any}()
+Z, x, y, levels = psa_compute(Tschur, npts, ax, eigA, opts)
+```
 
 ## Use with extended precision
 
