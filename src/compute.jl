@@ -18,12 +18,16 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 # normally hardwired, but change to get test coverage w/o huge problems
 # or to get reference solutions for comparison.
 mutable struct ComputeThresholds
+    # FIXME: undo mutability when tests etc. are updated
     minlancs4psa::Int # use SVD for n < this
     maxstdqr4hess::Int # use HessQR for n > this (in rectangular case)
     minnev::Int # number of ew's to acquire for projection
     maxit_lancs::Int # bound on Lanczos iterations
 end
-const psathresholds = ComputeThresholds(55,200,20,99)
+const _default_thresholds = ComputeThresholds(55,200,20,99)
+
+# FIXME: temporary alias until tests etc. are updated
+const psathresholds = _default_thresholds
 
 """
     psa_compute(T,npts,ax,eigA,opts,S=I) -> (Z,x,y,levels,info,Tproj,eigAproj,algo)
@@ -51,6 +55,7 @@ a Schur decomposition) the solver is much more efficient than otherwise.
 | `:real_matrix`      | `Bool` | `eltype(A)<:Real` | is the original matrix real? (Portrait is symmetric if so.) This is needed because `T` could be complex even if `A` was real.|
 | `:proj_lev`         | `Real` |  ∞ | The proportion by which to extend the axes in all directions before projection. If negative, exclude subspace of eigenvalues smaller than inverse fraction. ∞ means no projection.|
 | `:scale_equal` | `Bool` | false | force the grid to be isotropic? |
+| `:threaded` | `Bool` | false | distribute computation over Julia threads?
 
 # Notes:
 - Projection is only done for square, dense matrices.  Projection for sparse
@@ -81,7 +86,7 @@ a Schur decomposition) the solver is much more efficient than otherwise.
 """
 function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                      myprintln=println, logger=:default,
-                     psatol = 1e-5)
+                     psatol = 1e-5, thresholds=_default_thresholds)
 
     m,n = size(Targ)
     eigAproj = copy(eigA) # default
@@ -108,6 +113,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     proj_lev = get(all_opts,:proj_lev,Inf)
     re_calc_lev = all_opts[:recompute_levels]
     verbosity = get(all_opts,:verbosity,1)
+    threaded = get(all_opts,:threaded,false)
 
     if get(all_opts,:scale_equal,false)
         y_dist = ax[4]-ax[3]
@@ -134,87 +140,11 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     ly = length(y)
     Z = ones(ly,lx) .+ Inf
 
-    # Trefethen/Wright projection scheme:
     if !issparse(Targ) && n==m
-        # restrict to interesting subspace by ignoring eigenvectors whose
-        # eigenvalues lie outside rectangle around current axes
-        axis_w = ax[2]-ax[1]
-        axis_h = ax[4]-ax[3]
-        if proj_lev >= 0
-            proj_w = axis_w * proj_lev
-            proj_h = axis_h * proj_lev
-        else
-            proj_size = -1 / proj_lev
-        end
-        np = 0
-        ew_range = ax
-        # iteratively extend range until 20 (or all) ews are included
-        if (m > psathresholds.minnev) && !isempty(eigA)
-            local selection
-            while np < psathresholds.minnev
-                if proj_lev >= 0
-                    ew_range = [ew_range[1] - proj_w, ew_range[2] + proj_w,
-                                ew_range[3] - proj_h, ew_range[4] + proj_h]
-                    selection = findall((real(eigA) .> ew_range[1])
-                                     .& (real(eigA) .< ew_range[2])
-                                     .& (imag(eigA) .> ew_range[3])
-                                     .& (imag(eigA) .< ew_range[4]))
-                else
-                    selection = findall(abs.(eigA) .> proj_size)
-                    proj_size *= (1/2)
-                end
-                np = length(selection)
-                if proj_lev == 0
-                    # restrict to ews visible in window
-                    break
-                end
-            end
-
-        else
-            np = m
-        end
-        # if no need to project (all ews in range)
-        if m == np
-            wb_offset = 0.0
-            m = size(Targ,1)
-            # if !opts[:no_waitbar]
-            # TODO: post waitbar
-            # end
-            eigAproj = copy(eigA)
-            Tproj = Targ # no mutation, so just dup binding
-        else
-            wb_offset = 0.2
-            if verbosity > 1
-                println("projection reduces rank $m -> $np")
-            end
-            m = np
-            n = np
-            # restrict eigenvalues and matrix
-            eigAproj = eigA[selection]
-
-            # temporarily lose triangular structure
-            Tproj = copy(Matrix(Targ))
-            # if we have some eigenvalues in our window
-            if m>0
-                # TODO: post waitbar
-
-                # do the projection
-                for i=1:m
-                    for k=selection[i]-1:-1:i
-                        G,r = givens(conj(Tproj[k,k+1]),
-                                     conj(Tproj[k,k]-Tproj[k+1,k+1]),
-                                     k+1,k)
-                        rmul!(Tproj,adjoint(G))
-                        lmul!(G,Tproj)
-                    end
-                    # TODO: update waitbar
-                    # TODO: check for pause ll 291ff
-                    # TODO: check for stop/cancel
-                end
-                Tproj = UpperTriangular(triu(Tproj[1:m,1:m]))
-            end
-        end
+        Tproj, eigAproj = _maybe_project(Targ, proj_lev, ax, eigA, thresholds, verbosity)
+        m = size(Tproj,1)
     else
+        # sparse or rectangular
         Tproj = Targ
         wb_offset = 0
         # TODO: post waitbar
@@ -223,19 +153,21 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     # compute resolvent norms
 
     already_timed = false
-    ttime = 0 # holds total time spent on LU and Lanczos so far
+    ttime = 0.0 # holds total time spent on LU and Lanczos so far
     # TODO: msgbar_handle = ??
     first_time = true
     prevtstr = ""
     local no_est_time, progmeter
 
-    Tc = complex(eltype(Targ))
-
-    maxit = psathresholds.maxit_lancs
+    maxit = thresholds.maxit_lancs
+    warnflags = falses(2)
 
     if issparse(Targ)
         algo = :sparse_direct
         Tproj = Targ
+        # large value used when subspace eigenproblem doesn't converg
+        bigσ = 0.1*floatmax(real(eltype(Targ)))
+
         # reverse order so first row is likely to have a complex gridpt
         # (better timing for LU)
         for j=ly:-1:1
@@ -250,45 +182,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
             for k=1:lx
                 zpt = x[k] + y[j]*im
                 t0 = time()
-                F = lu(Targ - zpt*S)
-                σold = 0
-                qold = zeros(m)
-                β = 0
-                H = zeros(1,1) .+ 0im
-                q = normalize!(randn(n) + randn(n)*im)
-                w = similar(q)
-                v = similar(q)
-                local σ
-                for l=1:maxit
-                    ldiv!(w,F,q)
-#                    println("sizes w,q,v: ",size(w)," ",size(q)," ",size(v))
-                    ldiv!(v,adjoint(F),w)
-                    v = v - β * qold
-                    α = real(dot(q,v))
-                    v = v - α * q
-                    β = norm(v)
-                    qold = q
-                    q = v * (1 / β)
-                    Hold = H
-                    H = zeros(Tc,l+1,l+1)
-                    copyto!(view(H,1:l,1:l),Hold)
-                    H[l+1,l] = β
-                    H[l,l+1] = β
-                    H[l,l] = α
-                    # calculate eigenvalues of H
-                    # if error is too big, just set a large value
-                    try
-                        HEF = eigen(H[1:l,1:l])
-                        σ = maximum(HEF.values)
-                    catch JE
-                        σ = 1e308
-                        break
-                    end
-                    if (abs(σold / σ - 1)) < 1e-3
-                        break
-                    end
-                    σold = σ
-                end
+                σ = _psa_lanczos_sparse(Targ, S, zpt, maxit, bigσ)
                 Z[j,k] = 1/sqrt(σ)
 
                 # set message if we haven't already done so
@@ -351,8 +245,10 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
             q = randn(n) + randn(n)*im
             q = q / norm(q)
             t0 = time()
-            Z[j:-1:last_y,:],algo = psacore(Tproj,S,q,x,y[j:-1:last_y],
-                                       m-n+1; tol=psatol)
+            Z[j:-1:last_y,:],algo,warnflags = psacore(Tproj,S,q,x,y[j:-1:last_y], m-n+1;
+                                                      tol=psatol, threaded=threaded,
+                                                      warned=warnflags,
+                                                      thresholds=_default_thresholds)
 
             if !already_timed
                 if first_time
@@ -453,8 +349,92 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     return Z,x,y,levels,err,Tproj,eigAproj,algo
 end
 
+# Trefethen/Wright projection scheme:
+# restrict to interesting subspace by ignoring eigenvectors whose
+# eigenvalues lie outside rectangle around current axes
+function _maybe_project(Targ, factor, ax, eigA, thresholds, verbosity)
+    m,n = size(Targ)
+    axis_w = ax[2]-ax[1]
+    axis_h = ax[4]-ax[3]
+    if factor >= 0
+        proj_w = axis_w * factor
+        proj_h = axis_h * factor
+    else
+        proj_size = -1 / factor
+    end
+    np = 0
+    ew_range = ax
+    # iteratively extend range until 20 (or all) ews are included
+    if (m > thresholds.minnev) && !isempty(eigA)
+        local selection
+        while np < thresholds.minnev
+            if factor >= 0
+                ew_range = [ew_range[1] - proj_w, ew_range[2] + proj_w,
+                            ew_range[3] - proj_h, ew_range[4] + proj_h]
+                selection = findall((real(eigA) .> ew_range[1])
+                                    .& (real(eigA) .< ew_range[2])
+                                    .& (imag(eigA) .> ew_range[3])
+                                    .& (imag(eigA) .< ew_range[4]))
+            else
+                selection = findall(abs.(eigA) .> proj_size)
+                proj_size *= (1/2)
+            end
+            np = length(selection)
+            if factor == 0
+                # restrict to ews visible in window
+                break
+            end
+        end
+
+    else
+        np = m
+    end
+    # if no need to project (all ews in range)
+    if m == np
+        wb_offset = 0.0
+        m = size(Targ,1)
+        # if !opts[:no_waitbar]
+        # TODO: post waitbar
+        # end
+        eigAproj = copy(eigA)
+        Tproj = Targ # no mutation, so just dup binding
+    else
+        wb_offset = 0.2
+        if verbosity > 1
+            println("projection reduces rank $m -> $np")
+        end
+        m = np
+        n = np
+        # restrict eigenvalues and matrix
+        eigAproj = eigA[selection]
+
+        # temporarily lose triangular structure
+        Tproj = copy(Matrix(Targ))
+        # if we have some eigenvalues in our window
+        if m>0
+            # TODO: post waitbar
+
+            # do the projection
+            for i=1:m
+                for k=selection[i]-1:-1:i
+                    G,r = givens(conj(Tproj[k,k+1]),
+                                 conj(Tproj[k,k]-Tproj[k+1,k+1]),
+                                 k+1,k)
+                    rmul!(Tproj,adjoint(G))
+                    lmul!(G,Tproj)
+                end
+                # TODO: update waitbar
+                # TODO: check for pause ll 291ff
+                # TODO: check for stop/cancel
+            end
+            Tproj = UpperTriangular(triu(Tproj[1:m,1:m]))
+        end
+    end
+    return Tproj, eigAproj
+end
+
 """
-    psacore(T,S,q,x,y,bw;tol=1e-5) -> Z,algo
+    psacore(T,S,q,x,y,bw;tol=1e-5,threaded=false) -> Z,algo,warninfo
 
 Compute pseudospectra of a dense triangular matrix
 
@@ -471,12 +451,20 @@ Compute pseudospectra of a dense triangular matrix
 - `tol::Real=1e-5`:  tolerance to use to determine when to stop the
            inverse-Lanczos iteration
 - `bw::Int`: bandwidth of the input matrix
+- `threaded::Bool`: whether to use multithreading
+
+If `threaded` is `true`, computation of `Z`-values is distributed over
+multiple threads. This is worthwhile if using extended precision or a
+fine `Z` mesh.  If using BLAS element types, beware of
+oversubscription.
 
 # Result
 - `Z::Matrix{Real}`: the singular values corresponding to the grid points `x` and `y`.
 - `algo::Symbol`: indicates algorithm used
+- `warninfo::Vector{Bool}`: records whether warnings were issued
 """
-function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
+function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default, threaded=false,
+                 warned=falses(2), thresholds=_default_thresholds)
     if isreal(T)
         Twork = T .+ complex(eltype(T))(0)
     else
@@ -485,14 +473,13 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
     lx = length(x)
     ly = length(y)
     m,n = size(Twork)
-    bigsig = 0.1*floatmax(real(eltype(T)))
 
     if m<n
         throw(ArgumentError("Matrix size must be m x n with m >= n"))
     end
 
-    use_eye =  isa(S,UniformScaling)
-    if !use_eye
+    generalized =  !isa(S,UniformScaling)
+    if generalized
         ms,ns = size(S)
         if (ms != m) || (ns != n)
             throw(ArgumentError("Dimension mismatch for S & T"))
@@ -501,19 +488,39 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
 
     Z = zeros(ly,lx)
     diaga = diag(Twork)
-    cdiaga = conj(diaga)
+
+    # large value used when subspace eigenproblem doesn't converg
+    bigσ = 0.1*floatmax(real(eltype(T)))
 
     # for small matrices just use SVD
-    if n < psathresholds.minlancs4psa
+    if n < thresholds.minlancs4psa
         Twork = Matrix(Twork)
-        if use_eye
+        if !generalized
             algo = :SVD
-            for j=1:ly
-                for k=1:lx
-                    zpt = x[k] + y[j]*im
-                    Twork[1:m+1:end] = diaga .- zpt
-                    F = svd(Twork)
-                    Z[j,k] = minimum(F.S)
+            if threaded
+                # WARNING: relies on implementation of @threads
+                # as in Julia up to (at least) v1.6
+                # (stickiness and within-block ordering)
+                nt = Threads.nthreads()
+                Tw = [similar(Twork) for _ in 1:nt]
+                for j=1:ly
+                    Threads.@threads for k=1:lx
+                        Twt = Tw[Threads.threadid()]
+                        zpt = x[k] + y[j]*im
+                        copy!(Twt, Twork)
+                        Twt[1:m+1:end] .= diaga .- zpt
+                        F = svd!(Twt)
+                        Z[j,k] = minimum(F.S)
+                    end
+                end
+            else
+                for j=1:ly
+                    for k=1:lx
+                        zpt = x[k] + y[j]*im
+                        Twork[1:m+1:end] .= diaga .- zpt
+                        F = svd(Twork)
+                        Z[j,k] = minimum(F.S)
+                    end
                 end
             end
         else
@@ -528,25 +535,42 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
             end
         end
     else
-        maxit = psathresholds.maxit_lancs
-        H = zeros(real(eltype(Twork)),maxit+1,maxit+1)
-        if m==n
+        maxit = thresholds.maxit_lancs
+
+        if (m==n) && threaded
+            algo = :sq_lanc
+            nt = Threads.nthreads()
+            Twl = [copy(Twork) for _ in 1:nt]
+            Hw = [zeros(real(eltype(Twork)),maxit+1,maxit+1) for _ in 1:nt]
+            for j=1:ly
+                Threads.@threads for k=1:lx
+                    id = Threads.threadid()
+                    Twlt = Twl[id]
+                    Hwt = Hw[id]
+                    zpt = x[k]+y[j]*im
+                    Twlt[1:m+1:end] .= diaga .- zpt
+                    F1 = UpperTriangular(Twlt)
+                    σ, conv1, conv2 = _psa_lanczos!(Hwt, F1, q0, tol, maxit, bigσ)
+                    Z[j,k] = 1/sqrt(σ)
+                end
+            end
+        else
+          H = zeros(real(eltype(Twork)),maxit+1,maxit+1)
+          if m==n
             T1 = copy(Twork)
-            # T2 = T1'
-        end
-        unwarned = true
-        for j=1:ly
+          end
+          for j=1:ly
             for k=1:lx
                 zpt = x[k]+y[j]*im
                 if m != n
-                    if use_eye
+                    if !generalized
                         Twork[1:m+1:end] = diaga .- zpt
                         T1 = copy(Twork)
                     else
                         T1 = Twork - zpt*S
                     end
                     # for large rectangular Hessenberg, use HessQR algorithm
-                    if (bw == 2) && (m > psathresholds.maxstdqr4hess)
+                    if (bw == 2) && (m > thresholds.maxstdqr4hess)
                         algo = :HessQR
                         for jj=1:n-1
                             # DEVNOTE: not using A_mul_B!(G,T1)
@@ -557,65 +581,124 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default)
                         end
                     else
                         Qtmp,T1 = qr(T1)
-                        algo = ifelse(use_eye,:rect_qr,:rect_qz)
+                        algo = generalized ? :rect_qz : :rect_qr
                     end
                     T1 = triu(T1[1:n,1:n])
-                    # T2 = T1'
                 else # square
                     algo = :sq_lanc
-                    T1[1:m+1:end] = diaga .- zpt
-                    # T2[1:m+1:end] = cdiaga .- zpt'
+                    T1[1:m+1:end] .= diaga .- zpt
                 end
                 if !istriu(T1)
-                    @warn "psa-lancz: not UT"
+                    F1 = factorize(T1)
+                else
+                    F1 = UpperTriangular(T1)
                 end
-                F1 = factorize(T1)
-                q = copy(q0)
-                qold = zeros(n)
-                β = 0.0
-                σold = 0.0
-                local σ
-                for l=1:maxit
-                    # v = T1 \ (T2 \ q) - β * qold
-                    v = (F1 \ (F1' \ q)) - β * qold
-                    α = real(dot(q,v)) # (q' * v)
-                    v = v - α * q
-                    β = norm(v)
-                    qold = copy(q)
-                    q = v / β
-                    H[l+1,l] = β
-                    H[l,l+1] = β
-                    H[l,l] = α
-                    try
-                        ewp = eigvals(H[1:l,1:l])
-                        # eigvals may return complex eltype even if actually real
-                        σ = maximum(abs.(ewp))
-                        # if !all(isreal.(ewp))
-                        #     @warn "psa-lancs: eigval anomaly $ewp"
-                        #     # Should we ask users to report this?
-                        # end
-                    catch JE
-                        # We want a fallback for convergence failure, but throw in
-                        # other cases.
-                        # WARNING: this is fragile, depends on library internals
-                        if !isa(JE, LinearAlgebra.LAPACKException)
-                            rethrow(JE)
-                        end
-                        if unwarned
-                            @mywarn(logger,"σ-min set to smallest possible value.")
-                            unwarned = false
-                        end
-                        σ = bigsig
-                        break
-                    end
-                    if (abs(σold / σ - 1) < tol || β == 0)
-                        break
-                    end
-                    σold = σ
+                σ, conv1, fail1 = _psa_lanczos!(H, F1, q0, tol, maxit, bigσ)
+                if (!conv1) && (!warned[1])
+                    @warn "Lanczos convergence failure(s) while computing resolvent norms"
+                    warned[1] = true
+                end
+                if fail1 && (!warned[2])
+                    @warn "Eigenvalue convergence failure(s) while computing resolvent norms"
+                    warned[2] = true
                 end
                 Z[j,k] = 1/sqrt(σ)
             end
+          end
         end
     end # svd/lanczos branch
-    return Z,algo
+    return Z,algo,warned
+end
+
+function _psa_lanczos!(H, F1, q0, tol, maxit, bigσ)
+    m,n = size(F1)
+    # q0 may be too long because of projection
+    q = q0[1:n]
+    qold = fill!(similar(q),zero(eltype(q)))
+    β = 0.0
+    σold = 0.0
+    local σ
+    lancz_converged = false
+    H_eigs_failed = false
+    for l=1:maxit
+        v = (F1 \ (F1' \ q)) - β * qold
+        α = real(dot(q,v)) # (q' * v)
+        v .= v .- α .* q
+        β = norm(v)
+        copy!(qold,q)
+        q .= v ./ β
+        H[l+1,l] = β
+        H[l,l+1] = β
+        H[l,l] = α
+        try
+            ewp = eigvals(H[1:l,1:l])
+            # eigvals may return complex eltype even if actually real
+            σ = maximum(real.(ewp))
+            # if !all(isreal.(ewp))
+            #     @warn "psa-lancs: eigval anomaly $ewp"
+            #     # Should we ask users to report this?
+            # end
+        catch JE
+            # We want a fallback for convergence failure, but throw in
+            # other cases.
+            # WARNING: this is fragile, depends on library internals
+            if !isa(JE, LinearAlgebra.LAPACKException)
+                rethrow(JE)
+            end
+            H_eigs_failed = true
+            σ = bigσ
+            break
+        end
+        if (abs(σold / σ - 1) < tol || β == 0)
+            lancz_converged = true
+            break
+        end
+        σold = σ
+    end
+    return σ, lancz_converged, H_eigs_failed
+end
+
+function _psa_lanczos_sparse(Targ, S, zpt, maxit, bigσ)
+    m,n = size(Targ)
+    Tc = complex(eltype(Targ))
+
+    F = lu(Targ - zpt*S)
+    σold = 0
+    qold = zeros(m)
+    β = 0
+    H = zeros(Tc,1,1)
+    q = normalize!(randn(n) + randn(n)*im)
+    w = similar(q)
+    v = similar(q)
+    local σ
+    for l=1:maxit
+        ldiv!(w,F,q)
+        ldiv!(v,adjoint(F),w)
+        v = v - β * qold
+        α = real(dot(q,v))
+        v = v - α * q
+        β = norm(v)
+        qold = q
+        q = v * (1 / β)
+        Hold = H
+        H = zeros(Tc,l+1,l+1)
+        copyto!(view(H,1:l,1:l),Hold)
+        H[l+1,l] = β
+        H[l,l+1] = β
+        H[l,l] = α
+        # calculate eigenvalues of H
+        # if error is too big, just set a large value
+        try
+            ew = eigvals(H[1:l,1:l])
+            σ = maximum(real.(ew))
+        catch JE
+            σ = bigσ
+            break
+        end
+        if (abs(σold / σ - 1)) < 1e-3
+            break
+        end
+        σold = σ
+    end
+    return σ
 end

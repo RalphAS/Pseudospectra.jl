@@ -5,9 +5,9 @@
 
 using Pseudospectra, Test
 
-tests = ["basic","arpack1","medcplx","medrect","smrect","spdirect",
+tests = ["basic","threads","arpack1","medcplx","medrect","smrect","spdirect",
           "projection_and_transient","radius_abscissa","negproj","eigsnoconv",
-          "numrange", "linmap", "big", "power_transient", "swmethod", "zoom"
+         "numrange", "linmap", "big", "power_transient", "swmethod", "zoom",
           ]
 
 if length(ARGS) > 0

@@ -130,9 +130,10 @@ process a matrix into the auxiliary data structure used by Pseudospectra.
 - `:proj_lev`: projection level (see `psa_compute`)
 - `:npts`: edge length of grid for computing and plotting pseudospectra
 - `:arpack_opts::ArpackOptions`: (see type description)
-- `:levels::Vector{Real}`: contour levels
+- `:levels::Vector{Real}`: contour levels (if automatic choice is not wanted)
 - `:ax::Vector{Real}(4)`: bounding box for computation `[xmin,xmax,ymin,ymax]`
 - `:scale_equal::Bool`: force isotropic axes for spectral portraits?
+- `:threaded::Bool`: distribute `Z` values over Julia threads?
 """
 function new_matrix(A::AbstractMatrix,
                     opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
@@ -310,6 +311,7 @@ function new_matrix(A::AbstractMatrix,
     ps_dict[:init_direct] = direct
     ps_dict[:direct] = direct
     ps_dict[:verbosity] = verbosity
+    ps_dict[:threaded] = get(opts,:threaded,false)
 
     # DEVNOTE: if direct, upstream constructs axes and calls origplot/redraw
     return ps_data
@@ -373,6 +375,7 @@ function new_matrix(A, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     ps_dict[:init_direct] = direct
     ps_dict[:direct] = direct
     ps_dict[:verbosity] = verbosity
+    ps_dict[:threaded] = false
 
     return ps_data
 end
@@ -394,6 +397,8 @@ that first.
 - `opts::Dict{Symbol,Any}`:
   - `:ax`, axis limits (overrides value stored in `ps_data`).
   - other options passed to `redrawcontour`, `arnoldiplotter!`
+
+Note that many options stored in `ps_data` by `new_matrix()` influence the processing.
 
 When revising a spectral portrait (`revise_method==true`), the following
 entries in `opts` also apply:
@@ -482,6 +487,7 @@ function driver!(ps_data::PSAStruct,
                                     :proj_lev=>zoom.proj_lev,
                                     :scale_equal=>zoom.scale_equal,
                                     :real_matrix=>ps_dict[:Aisreal],
+                                    :threaded=>ps_dict[:threaded],
                                     :verbosity=>verbosity)
         ss = size(A)
         Z,x,y,t_levels,err,Tproj,eigAproj,algo = psa_compute(A,zoom.npts,

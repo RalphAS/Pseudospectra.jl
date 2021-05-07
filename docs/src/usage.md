@@ -67,3 +67,20 @@ spectralportrait(A)
 
 Note that linear algebra with non-BLAS types is expensive, so computation takes many
 minutes even for moderate-sized matrices.
+
+## Parallelism
+
+The computation of spectral portraits lends itself to parallel processing.
+Multiprocessing is only implemented for some algorithm variants.
+
+The core algorithm can be set to distribute the `Z`-grid over Julia
+threads with the `threaded` entry in `options`.  This is especially useful for
+extended precision, and for working on fine grids with BLAS
+types. (One may need to adjust thread usage in the BLAS to balance if
+the library is aggressive).
+
+Unfortunately `BigFloat` operations currently make heavy use of the heap, invoking
+the thread-unfriendly garbage collector, so for extended precision `Float128` may
+be more practical.
+
+For larger matrices, parallelism may best be left to the underlying linear algebra libraries.
