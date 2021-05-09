@@ -2,6 +2,7 @@
 
 using Pseudospectra, LinearAlgebra
 
+@testset "Multithreading" begin
 @info "Testing multihreading with nt=$(Threads.nthreads())"
 for n in [20,60]
     A = randn(n,n) + 1im * randn(n,n)
@@ -15,4 +16,5 @@ for n in [20,60]
     Z1,x,y,levels,err,Tproj,eigAproj = psa_compute(Tschur,npts,
                                                    ax,eigA,opts)
     @test norm(Z0 - Z1) / norm(Z0) < 1e-4
+end
 end
