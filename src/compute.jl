@@ -4,7 +4,7 @@ Computational kernels for pseudospectra computations.
 This file is part of Pseudospectra.jl.
 
 Julia implementation
-Copyright (c) 2017 Ralph A. Smith
+Copyright (c) 2017-2021 Ralph A. Smith
 
 Portions derived from EigTool:
  Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
@@ -85,9 +85,12 @@ a Schur decomposition) the solver is much more efficient than otherwise.
 [^Trefethen1999]: L.N.Trefethen, "Computation of pseudospectra," Acta Numerica 8, 247-295 (1999).
 """
 function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
-                     myprintln=println, logger=:default,
-                     psatol = 1e-5, thresholds=_default_thresholds)
-
+                     psatol = 1e-5, thresholds=_default_thresholds,
+                     proglog=nothing, logger=:default,
+                     ctrlflag=nothing)
+    # `proglog` is a placeholder in the hope that something like ProgressMeter can
+    #    be made to work in a GUI
+    # `ctrlflag` allows user to force early termination.
     m,n = size(Targ)
     eigAproj = copy(eigA) # default
     if isa(S,UniformScaling)
@@ -146,18 +149,11 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     else
         # sparse or rectangular
         Tproj = Targ
-        wb_offset = 0
-        # TODO: post waitbar
     end # projection branch
 
     # compute resolvent norms
 
-    already_timed = false
-    ttime = 0.0 # holds total time spent on LU and Lanczos so far
-    # TODO: msgbar_handle = ??
-    first_time = true
-    prevtstr = ""
-    local no_est_time, progmeter
+    local progmeter
 
     maxit = thresholds.maxit_lancs
     warnflags = falses(2)
@@ -168,15 +164,17 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         # large value used when subspace eigenproblem doesn't converg
         bigσ = 0.1*floatmax(real(eltype(Targ)))
 
+        if proglog === nothing
+            progmeter = Progress(ly,1,"Computing pseudospectra...", 20)
+        end
         # reverse order so first row is likely to have a complex gridpt
         # (better timing for LU)
         for j=ly:-1:1
-            # TODO: update waitbar
-            # wb_offset+(1-wb_offset)*(ly-j)/ly
-
-            # TODO: check for pause
-
-            # TODO: check for stop/cancel
+            # check for stop/cancel
+            if (ctrlflag !== nothing) && (ctrlflag[] == 1)
+                return nothing
+                # Eigtool also allows for pause.
+            end
 
             # loop over points in x-direction
             for k=1:lx
@@ -185,63 +183,24 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                 σ = _psa_lanczos_sparse(Targ, S, zpt, maxit, bigσ)
                 Z[j,k] = 1/sqrt(σ)
 
-                # set message if we haven't already done so
-                if !already_timed
-                    if first_time
-                        # we skip timing first point since it likely
-                        # includes overhead
-                        first_time = false
-                    else
-                        ttime = time() - t0
-                        total_time = ttime*lx*ly
-                        no_est_time = (total_time < 10)
-                        if !no_est_time
-                            if myprintln == println
-                                progmeter = Progress(ly,1,
-                                                     "Computing pseudospectra...", 20)
-                            else
-                                # double second pt time to account for first
-                                ttime = ttime * 2
-                                total_time,timestr = prettytime(total_time)
-                                the_message = (myname *
-                                               ": estimated remaining time is "
-                                               * timestr)
-                                myprintln(the_message)
-                                prevtstr = timestr
-                            end
-                            already_timed = true
-                        end
-                    end
-                else
-                    ttime = ttime + time() - t0
-                end
             end # for k=1:lx
-            if !no_est_time
-                if myprintln == println
-                    update!(progmeter,ly-j+1)
-                else
-                    total_time = ttime * (j-1) / (ly-j+1)
-                    total_time,timestr = prettytime(total_time)
-                    if (total_time > 0) && (timestr != prevtstr)
-                        the_message = (myname * ": estimated remaining time is "
-                                       * timestr)
-                        myprintln(the_message)
-                        prevtstr = timestr
-                    end
-                end
-                    # drawnow
+            if proglog === nothing
+                update!(progmeter,ly-j+1)
             end
         end
     else # matrix is dense
         step = _get_step_size(m,ly,real(eltype(Tproj)))
+        if proglog === nothing
+            progmeter = Progress(ly,1,"Computing pseudospectra...", 20)
+        end
         for j=ly:-step:1
-            # TODO: check for pause
-            # TODO: check for cancel
+            # check for stop/cancel
+            if (ctrlflag !== nothing) && (ctrlflag[] == 1)
+                return nothing
+                # Eigtool also allows for pause.
+            end
 
             last_y = max(j-step+1,1)
-            # if !opts[:no_waitbar]
-            # TODO: post waitbar
-            #  end
             q = randn(n) + randn(n)*im
             q = q / norm(q)
             t0 = time()
@@ -250,56 +209,11 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
                                                       warned=warnflags,
                                                       thresholds=_default_thresholds)
 
-            if !already_timed
-                if first_time
-                    # we skip timing first batch since it likely
-                    # includes codegen overhead
-                    first_time = false
-                else
-                    ttime = time() - t0
-                    total_time = ttime * ceil(ly/step)
-                    no_est_time = (total_time < 10)
-                    if !no_est_time
-                        if myprintln == println
-                            progmeter = Progress(ly,1,
-                                                 "Computing pseudospectra...", 20)
-                        else
-                            ttime = ttime * 2 # account for first batch
-                            total_time,timestr = prettytime(total_time)
-                            the_message = (myname *
-                                           ": estimated remaining time is "
-                                           * timestr)
-                            myprintln(the_message)
-                            prevtstr = timestr
-                        end
-                        already_timed = true
-                    end
-                end
-            else # already timed
-                ttime = ttime + time() - t0
-                if !no_est_time
-                    if myprintln == println
-                        update!(progmeter, ly-j+1)
-                    else
-                        total_time = ttime * ((floor((j-1)/step))
-                                              /(ceil(ly/step) - floor((j-1)/step)))
-                        total_time, timestr = prettytime(total_time)
-                        if (total_time > 0) && (timestr != prevtstr)
-                            the_message = (myname *
-                                           ": estimated remaining time is "
-                                           * timestr)
-                            myprintln(the_message)
-                            prevtstr = timestr
-                        end
-                    end
-                end
-            end # timing
+            if proglog === nothing
+                update!(progmeter, ly-j+1)
+            end
         end # ly loop
     end # if sparse/dense
-
-    # if !opts[:no_waitbar]
-    # TODO: flash done and close
-    # end
 
     # map data (and y) if accounting for symmetry
     if n_mirror_pts < 0
@@ -402,7 +316,6 @@ function _maybe_project(Targ, factor, ax, eigA, thresholds, verbosity)
     end
     # if no need to project (all ews in range)
     if m == np
-        wb_offset = 0.0
         m = size(Targ,1)
         # if !opts[:no_waitbar]
         # TODO: post waitbar
@@ -410,7 +323,6 @@ function _maybe_project(Targ, factor, ax, eigA, thresholds, verbosity)
         eigAproj = copy(eigA)
         Tproj = Targ # no mutation, so just dup binding
     else
-        wb_offset = 0.2
         if verbosity > 1
             println("projection reduces rank $m -> $np")
         end
@@ -461,7 +373,7 @@ Compute pseudospectra of a dense triangular matrix
 - `y::Vector{Real}`: imaginary-part grid to compute the pseudospectra over
 - `tol::Real=1e-5`:  tolerance to use to determine when to stop the
            inverse-Lanczos iteration
-- `bw::Int`: bandwidth of the input matrix
+- `bw::Int`: lower bandwidth of the input matrix (2 for Hessenberg)
 - `threaded::Bool`: whether to use multithreading
 
 If `threaded` is `true`, computation of `Z`-values is distributed over
@@ -474,7 +386,7 @@ oversubscription.
 - `algo::Symbol`: indicates algorithm used
 - `warninfo::Vector{Bool}`: records whether warnings were issued
 """
-function psacore(T, S, q0, x, y, bw; tol = 1e-5, logger=:default, threaded=false,
+function psacore(T, S, q0, x, y, bw; tol = 1e-5, threaded=false,
                  warned=falses(2), thresholds=_default_thresholds)
     if isreal(T)
         Twork = T .+ complex(eltype(T))(0)

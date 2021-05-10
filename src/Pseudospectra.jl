@@ -494,8 +494,7 @@ function driver!(ps_data::PSAStruct,
                                                              zoom.ax,
                                                              eigA,psa_opts,
                                                              B,
-                                                        myprintln=myprintln,
-                                                        logger=logger)
+                                                             logger=logger)
 
         # FIXME: handle projection properly
         ps_dict[:proj_ews] = eigAproj
