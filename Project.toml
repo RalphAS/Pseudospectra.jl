@@ -1,6 +1,6 @@
 name = "Pseudospectra"
 uuid = "d6c5b33e-0240-5bd5-a771-a97ae748a961"
-version = "0.2.0-DEV"
+version = "0.2.0"
 
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
