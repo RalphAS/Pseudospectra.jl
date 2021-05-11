@@ -117,6 +117,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
     re_calc_lev = all_opts[:recompute_levels]
     verbosity = get(all_opts,:verbosity,1)
     threaded = get(all_opts,:threaded,false)
+    nservers = get(all_opts,:nservers, Threads.nthreads())
 
     if get(all_opts,:scale_equal,false)
         y_dist = ax[4]-ax[3]
@@ -189,15 +190,17 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
             end
         end
     else # matrix is dense
-        step = _get_step_size(m,ly,real(eltype(Tproj)))
         if proglog === nothing
             progmeter = Progress(ly,1,"Computing pseudospectra...", 20)
         end
+        # Following Eigtool, we divide into batches and check for cancellation order
+        # at bulk intervals.
+        # Eigtool also allows for pause.
+        step = _get_step_size(m,ly,real(eltype(Tproj)))
         for j=ly:-step:1
             # check for stop/cancel
             if (ctrlflag !== nothing) && (ctrlflag[] == 1)
                 return nothing
-                # Eigtool also allows for pause.
             end
 
             last_y = max(j-step+1,1)
@@ -205,7 +208,8 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
             q = q / norm(q)
             t0 = time()
             Z[j:-1:last_y,:],algo,warnflags = psacore(Tproj,S,q,x,y[j:-1:last_y], m-n+1;
-                                                      tol=psatol, threaded=threaded,
+                                                      tol=psatol,
+                                                      threaded=threaded, nt=nservers,
                                                       warned=warnflags,
                                                       thresholds=_default_thresholds)
 
@@ -356,6 +360,62 @@ function _maybe_project(Targ, factor, ax, eigA, thresholds, verbosity)
     return Tproj, eigAproj
 end
 
+struct _SVD_Server{MT}
+    Twt::MT
+end
+
+function (s::_SVD_Server)(c::Channel{Tuple{Int,Int}}, Twork, x, y, Z)
+    m,n = size(Twork)
+    try
+    while true
+        j,k = take!(c)
+        if j < 0
+            break
+        end
+        zpt = x[k] + y[j]*im
+        copy!(s.Twt, Twork)
+        s.Twt[1:m+1:end] .-= zpt
+        F = svd!(s.Twt)
+        Z[j,k] = minimum(F.S)
+    end
+    catch JE
+        println("exception in svd server: "); display(JE); println()
+        return false
+    end
+    return true
+end
+
+struct _Sq_Lancs_Server{MT,HT}
+    Twt::MT
+    Hwt::HT
+end
+
+function (s::_Sq_Lancs_Server)(c::Channel{Tuple{Int,Int}},
+                               diaga, q0, tol, maxit, bigσ, x, y, Z)
+    m,n = size(s.Twt)
+    convs = 0
+    fails = 0
+    try
+    while true
+        j,k = take!(c)
+        if j < 0
+            break
+        end
+        zpt = x[k] + y[j]*im
+        s.Twt[1:m+1:end] .= diaga .- zpt
+        F1 = UpperTriangular(s.Twt)
+        σ, conv1, fail1 = _psa_lanczos!(s.Hwt, F1, q0, tol, maxit, bigσ)
+        convs += conv1
+        fails += fail1
+        Z[j,k] = 1/sqrt(σ)
+    end
+    catch JE
+        println("exception in sq lancs server: "); display(JE); println()
+        return false, convs, fails
+    end
+    return true, convs, fails
+end
+
 """
     psacore(T,S,q,x,y,bw;tol=1e-5,threaded=false) -> Z,algo,warninfo
 
@@ -378,15 +438,14 @@ Compute pseudospectra of a dense triangular matrix
 
 If `threaded` is `true`, computation of `Z`-values is distributed over
 multiple threads. This is worthwhile if using extended precision or a
-fine `Z` mesh.  If using BLAS element types, beware of
-oversubscription.
+fine `Z` mesh.  If using BLAS element types, beware of oversubscription.
 
 # Result
 - `Z::Matrix{Real}`: the singular values corresponding to the grid points `x` and `y`.
 - `algo::Symbol`: indicates algorithm used
 - `warninfo::Vector{Bool}`: records whether warnings were issued
 """
-function psacore(T, S, q0, x, y, bw; tol = 1e-5, threaded=false,
+function psacore(T, S, q0, x, y, bw; tol = 1e-5, threaded=false, nt=Threads.nthreads(),
                  warned=falses(2), thresholds=_default_thresholds)
     if isreal(T)
         Twork = T .+ complex(eltype(T))(0)
@@ -421,22 +480,34 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, threaded=false,
         if !generalized
             algo = :SVD
             if threaded
-                # WARNING: relies on implementation of @threads
-                # as in Julia up to (at least) v1.6
-                # (stickiness and within-block ordering)
-                nt = Threads.nthreads()
-                Tw = [similar(Twork) for _ in 1:nt]
-                for j=1:ly
-                    Threads.@threads for k=1:lx
-                        Twt = Tw[Threads.threadid()]
-                        zpt = x[k] + y[j]*im
-                        copy!(Twt, Twork)
-                        Twt[1:m+1:end] .= diaga .- zpt
-                        F = svd!(Twt)
-                        Z[j,k] = minimum(F.S)
+                svr = [_SVD_Server(similar(Twork)) for _ in 1:nt]
+                c = Channel{Tuple{Int,Int}}(Inf)
+                # prime the channel
+                for k=1:lx
+                    put!(c,(1,k))
+                end
+                ta = Task[]
+                for it in 1:nt
+                    t = Task(()->svr[it](c, Twork, x, y, Z))
+                    t.sticky = false
+                    schedule(t)
+                    push!(ta,t)
+                end
+                for j=2:ly
+                    for k=1:lx
+                        put!(c,(j,k))
                     end
                 end
-            else
+                for k in 1:nt
+                    put!(c,(-1,-1))
+                end
+                for k in 1:nt
+                    r = fetch(ta[k])
+                    if !isa(r, Bool) || !r
+                        @warn "svd worker $k failed"
+                    end
+                end
+            else # "serial" version
                 for j=1:ly
                     for k=1:lx
                         zpt = x[k] + y[j]*im
@@ -462,22 +533,34 @@ function psacore(T, S, q0, x, y, bw; tol = 1e-5, threaded=false,
 
         if (m==n) && threaded
             algo = :sq_lanc
-            nt = Threads.nthreads()
-            Twl = [copy(Twork) for _ in 1:nt]
-            Hw = [zeros(real(eltype(Twork)),maxit+1,maxit+1) for _ in 1:nt]
-            for j=1:ly
-                Threads.@threads for k=1:lx
-                    id = Threads.threadid()
-                    Twlt = Twl[id]
-                    Hwt = Hw[id]
-                    zpt = x[k]+y[j]*im
-                    Twlt[1:m+1:end] .= diaga .- zpt
-                    F1 = UpperTriangular(Twlt)
-                    σ, conv1, conv2 = _psa_lanczos!(Hwt, F1, q0, tol, maxit, bigσ)
-                    Z[j,k] = 1/sqrt(σ)
+            svr = [_Sq_Lancs_Server(copy(Twork),
+                                    zeros(real(eltype(Twork)),maxit+1,maxit+1))
+                   for _ in 1:nt
+                   ]
+            c = Channel{Tuple{Int,Int}}(Inf)
+            # prime the channel
+            for k=1:lx
+                put!(c,(1,k))
+            end
+            ta = Task[]
+            for it in 1:nt
+                t = Task(()->svr[it](c, diaga, q0, tol, maxit, bigσ, x, y, Z))
+                t.sticky = false
+                schedule(t)
+                push!(ta,t)
+            end
+            for j=2:ly
+                for k=1:lx
+                    put!(c,(j,k))
                 end
             end
-        else
+            for k in 1:nt
+                put!(c,(-1,-1))
+            end
+            for k in 1:nt
+                fetch(ta[k])
+            end
+        else # serial version
           H = zeros(real(eltype(Twork)),maxit+1,maxit+1)
           if m==n
             T1 = copy(Twork)
