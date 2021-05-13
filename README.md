@@ -55,8 +55,8 @@ code now hosted [on GitHub](https://github.com/eigtool/eigtool).
 No endorsement or promotion of Pseudospectra.jl by the authors of EigTool
 is implied.
 
-Specific documentation for Pseudospectra is a work in progress; a draft may
-be available [here](https://RalphAS.github.io/Pseudospectra.jl/dev). See the
+Specific documentation for Pseudospectra is a work in progress; a draft is
+available [here](https://RalphAS.github.io/Pseudospectra.jl/dev). See the
 examples and tests for more.
 
 
@@ -76,8 +76,10 @@ Some functions used for examples require other packages. They should
 give a useful complaint if invoked without that support.
 
 # Installation
-Until this project is mature enough to be registered, install by adding this repository
-explicitly with the package manager.
+This package should be included in the General registry by the time anyone else sees
+this paragraph, so the normal `Pkg` commands to add `Pseudospectra` should suffice.
+
+In the interim, install by adding this repository explicitly with the package manager.
 ```julia
 Pkg.add("https://github.com/RalphAS/Pseudospectra.jl")
 ```

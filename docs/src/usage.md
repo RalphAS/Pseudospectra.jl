@@ -24,8 +24,8 @@ vicinity of the spectrum - the standard display of a spectral
 portrait. Eigenvalues of `A` are displayed as black points, if they
 are available.
 
-The `new_matrix` function constructs a stateful object with information
-about `A` conducive to pseudospectral analysis; `driver!` then manages
+The [`new_matrix`](@ref) function constructs a stateful object with information
+about `A` conducive to pseudospectral analysis; [`driver!`](@ref) then manages
 the appropriate computations and plotting.
 
 
@@ -35,17 +35,6 @@ The integrated plotting capabilities require that the `Plots` and/or
 `PyPlot` packages be installed. These are not formal package
 requirements because much of the `Pseudospectra` package is useful
 without plotting.
-
-## Annoyances
-
-(These are problems with other packages that may arise here.  If you
-find problems with Pseudospectra.jl itself, please file an issue.)
-
-If you are using IJulia (viz. Jupyter) and Plots, you may need to
-issue `inline()` to get the plots to appear.
-
-Some of the supplementary plotting functions use LaTeX strings which
-are displayed incorrectly by certain plotting backends.
 
 ## Use without the integrated plotters
 
@@ -64,8 +53,9 @@ Z, x, y, levels = psa_compute(Tschur, npts, ax, eigA, opts)
 
 ## Use with extended precision
 
-The dense-matrix methods should work with matrix element types of extended precision
-such as `Float128` and `BigFloat`, but they require linear algebra methods which
+The dense-matrix methods work with matrix element types of extended precision
+such as `Float128` (from the `Quadmath` package) and `BigFloat`; they do require
+linear algebra methods which
 are implemented in the `GenericLinearAlgebra` and `GenericSchur` packages.
 
 ```julia
@@ -80,9 +70,9 @@ minutes even for moderate-sized matrices.
 ## Parallelism
 
 The computation of spectral portraits lends itself to parallel processing.
-Multiprocessing is only implemented for some algorithm variants.
+Multiprocessing is implemented here for some algorithm variants.
 
-The core algorithm can be set to distribute the `Z`-grid over Julia
+The core dense-matrix algorithms can be set to distribute the `Z`-grid over Julia
 threads with the `threaded` entry in `options`.  This is especially useful for
 extended precision, and for working on fine grids with BLAS
 types. (One may need to adjust thread usage in the BLAS to balance if
@@ -92,4 +82,21 @@ Unfortunately `BigFloat` operations currently make heavy use of the heap, invoki
 the thread-unfriendly garbage collector, so for extended precision `Float128` may
 be more practical.
 
-For larger matrices, parallelism may best be left to the underlying linear algebra libraries.
+## Large matrices
+
+Currently, the methods for handling large matrices are those ported from Eigtool.
+They can be invoked via options to the user-facing computational functions.
+
+### Direct-sparse
+
+This is a Lanczos scheme which does a sparse LU decomposition for each point in the `Z` grid.
+
+### Regional subspace projection
+
+This uses one Schur factorization of the matrix and is not always reliable. [More
+documentation needed]
+
+### Arnoldi projection
+
+This uses a specialized wrapper of the ARPACK library, and may also be used for linear maps
+not explicitly represented as matrices. [More documentation needed]
