@@ -4,7 +4,7 @@
 This file is part of Pseudospectra.jl.
 
 Julia implementation
-Copyright (c) 2020 Ralph A. Smith
+Copyright (c) 2020-2021 Ralph A. Smith
 
 Portions derived from EigTool:
  Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
@@ -16,7 +16,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraMakie
 
-using ..AbstractPlotting
+using ..Makie
 using PlotUtils
 using Pseudospectra, LinearAlgebra, Printf
 using Colors: RGBA, RGB
@@ -96,7 +96,7 @@ function dcheadless(gs::MakieGUIState,p,n)
         else
             fn = tempname() * ".png"
         end
-        AbstractPlotting.save(fn, p)
+        Makie.save(fn, p)
         @info("graph saved in $(fn)")
     end
     nothing
@@ -119,29 +119,27 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
     end
     eigA = ps_dict[:proj_ews]
     fig = Figure(resolution = (500, 500))
-    ax1 = fig[1,1] = Axis(fig)
+    ax1 = Axis(fig)
     ctx = ax1
     gs.mainph = fig
 
-    # Before layout was working, we did the equivalent of this:
-    # gs.mainph = Scene()
-    # ctx = gs.mainph
-        if isempty(levels)
-            contour!(ctx,x,y,log10.(Z');opts[:contourkw]...)
-        else
-            kwargs = merge(Dict(:levels => levels),opts[:contourkw])
-            contour!(ctx,x,y,log10.(Z'); kwargs...)
-            # gs.mainph = quantour(x,y,log10.(Z), levels; opts[:contourkw]...)
-        end
+    if isempty(levels)
+        clines = contour!(ctx,x,y,log10.(Z');opts[:contourkw]...)
+    else
+        kwargs = merge(Dict(:levels => levels),opts[:contourkw])
+        clines = contour!(ctx,x,y,log10.(Z'); kwargs...)
+        # gs.mainph = quantour(x,y,log10.(Z), levels; opts[:contourkw]...)
+    end
+    cbar = Colorbar(fig, clines, label="log10(ϵ)", labelpadding=0)
         if !isempty(eigA)
             scatter!(ctx,real(eigA),imag(eigA),color=:black)
         end
         if get(opts,:showimagax,false)
-            plot!(ctx,[0,0],zoom.ax[3:4],color=:black)
+            lines!(ctx,[0,0],zoom.ax[3:4],color=:black, linestyle=:dash)
         end
         if get(opts,:showunitcircle,false)
-            plot!(ctx,cos.((0:0.01:2)*π),sin.((0:0.01:2)*π),
-                  color=:black)
+            lines!(ctx,cos.((0:0.01:2)*π),sin.((0:0.01:2)*π),
+                  color=:black, linestyle=:dash)
         end
         if get(opts,:showfov,false)
             if isempty(get(ps_dict,:schur_mtx,[]))
@@ -150,12 +148,14 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
                 if isempty(get(ps_dict,:fov,[]))
                     numrange!(ps_data,get(opts,:fov_npts,20))
                 end
-                plot!(ctx,real.(ps_dict[:fov]),imag.(ps_dict[:fov]),
-                      color=:black)
+                lines!(ctx,real.(ps_dict[:fov]),imag.(ps_dict[:fov]),
+                       color=:black)
             end
         end
-        setxylims!(ctx,zoom.ax)
-        drawp(gs,gs.mainph,1)
+    setxylims!(ctx,zoom.ax)
+    fig[1,1] = ax1
+    fig[1,2] = cbar
+    drawp(gs,gs.mainph,1)
     nothing
 end
 
@@ -753,6 +753,6 @@ end
 
 const eigtool_cgrad = etcgrad()
 
-default_opts[:contourkw][:linecolor] = eigtool_cgrad;
+default_opts[:contourkw][:colormap] = eigtool_cgrad;
 
 end # module
