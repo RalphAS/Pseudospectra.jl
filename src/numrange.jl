@@ -71,9 +71,10 @@ function numrange!(ps_data::PSAStruct,thmax=20)
     if mapreduce(w -> ((real(w) < ax[1]) | (real(w) > ax[2]) |
                        (imag(w) < ax[3]) | (imag(w) > ax[4])),
                  &, z, init=true)
-        warn("The boundary of the numerical range is not visible on the "
-             * "current axes; expand axis limits to see it. "
-             * "A bounding box is $(extrema(real(z))) $(extrema(imag(z))).")
+        @warn """The boundary of the numerical range is not visible on the current axes;
+                 expand axis limits to see it.
+                 A bounding box is $(extrema(real(z))) $(extrema(imag(z))).
+        """
     end
 end
 
@@ -83,7 +84,7 @@ end
 Compute the numerical abscissa of a matrix `A`, `ω(A)`.
 
 Uses `eigvals()`. `ω(A)` provides bounds and limiting behavior for
-`norm(expm(t*A))`.
+`opnorm(exp(t*A))`.
 """
 function numerical_abscissa(A::AbstractMatrix)
     (1/2) * maximum(eigvals(A+A'))

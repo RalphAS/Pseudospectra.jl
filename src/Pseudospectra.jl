@@ -87,7 +87,7 @@ This is useful for analyzing linear initial value problems `∂x/∂t = Ax`.
 """
 function mtxexpsplot(ps_data::PSAStruct, dt=0.1, nmax=50;
                      gs::GUIState=defaultgs(), kws...)
-    mtxexpsplot(gs, ps_data, dt=dt, nmax=nmax; kws...)
+    mtxexpsplot(gs, ps_data, dt, nmax; kws...)
 end
 
 """
