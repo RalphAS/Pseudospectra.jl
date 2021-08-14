@@ -1,10 +1,13 @@
 @userplot SpectralPortrait
-
+# Proof of concept Plot Recipe for spectral portraits.
+# See https://docs.juliaplots.org/latest/recipes/#case-studies for documentation on user recipes for Plots.jl
 RecipesBase.@recipe function f(p::SpectralPortrait; npts::Integer = 100)
-
+    # RecipesBase automatically generates the spectralportrait and spectralportrait! functions, so we have to do the typechecking here
     if length(p.args) != 1 || !(typeof(p.args[1]) <: AbstractMatrix)
         error("spectralportrait must be given an AbstractMatrix. Got $(typeof(p.args))")
     end
+
+    # Below is the computation of of the spectral portrait taken from the base implementation
     A₀ = p.args[1]
 
     local ps_data
@@ -26,6 +29,8 @@ RecipesBase.@recipe function f(p::SpectralPortrait; npts::Integer = 100)
     psa_opts = _basic_psa_opts(zoom, ps_dict)
 
     Z, xs, ys, t_levels, err, Tproj, eigAproj, algo = psa_compute(A, npts, zoom.ax, eigA, psa_opts, B)
+
+    # Recipe code below
 
     @series begin
         seriestype := :contour
