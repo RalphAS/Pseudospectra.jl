@@ -34,6 +34,7 @@ RecipesBase.@recipe function f(p::SpectralPortrait; npts::Integer = 100)
 
     @series begin
         seriestype := :contour
+        linecolor --> eigtool_cgrad
         xs, ys, log10.(Z)
     end
 
