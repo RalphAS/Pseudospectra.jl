@@ -2,11 +2,15 @@ module PSAPlots
     using RecipesBase
     using Pseudospectra
     using LinearAlgebra
+    using PlotUtils
+    using Printf
 
-    import Pseudospectra: vec2ax, _basic_psa_opts, psa_compute
+    import Pseudospectra: vec2ax, psa_compute
+    import Pseudospectra: psmode_inv_lanczos, oneeigcond
 
     include("utils.jl")
-    include("colormap.jl")
+    include("defaults.jl")
+    #include("colormap.jl")
     
     include("recipes/spectralportrait.jl")
     include("recipes/plotmode.jl")

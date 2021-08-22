@@ -116,6 +116,8 @@ include("transients.jl")
 include("plotter.jl")
 include("zooming.jl")
 
+include("plots/PSAPlots.jl")
+
 """
     new_matrix(A::AbstractMatrix, opts::Dict{Symbol,Any}=()) -> ps_data
 

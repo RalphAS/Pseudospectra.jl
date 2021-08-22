@@ -1,7 +1,7 @@
 @userplot MtxPowersPlot
 
 
-RecipesBase.@recipe function f(p::MtxPowersPlot, nmax = 50,
+RecipesBase.@recipe function f(p::MtxPowersPlot, nmax::Integer = 50;
     lbmethod = :none,
     lbdk = 0.25
     )
@@ -15,8 +15,9 @@ RecipesBase.@recipe function f(p::MtxPowersPlot, nmax = 50,
 
     alp = maximum(abs.(ps_data.ps_dict[:ews]))
 
-    layout := @layout [a; b]
-    link := :x # link the x-axis of both subplots
+    # NB. We need Plots to use @layout
+    #layout := @layout [a; b]
+    #link := :x # link the x-axis of both subplots
 
     # normal plot
     @series begin
@@ -32,6 +33,7 @@ RecipesBase.@recipe function f(p::MtxPowersPlot, nmax = 50,
         powers, alp.^powers
     end
     # log plot
+    #=
     @series begin
         seriestype := :path
         subplot := 2
@@ -46,4 +48,5 @@ RecipesBase.@recipe function f(p::MtxPowersPlot, nmax = 50,
         yscale := :log10
         powers, alp.^powers
     end
+    =#
 end

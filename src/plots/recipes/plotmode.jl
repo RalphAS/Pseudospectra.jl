@@ -9,8 +9,10 @@ function get_mode_title(pseudo, approx, z, s)
     return prefix * infix * "\n  \$\\lambda = " * λ_str * "\$"
 end
 
-RecipesBase.@recipe f(p::PlotMode; pseudo::Bool, approx::Bool, verbosity)
-
+RecipesBase.@recipe function f(p::PlotMode; pseudo=false, approx=false, verbosity=0)
+    if length(p.args) != 3
+        error("plotmode must be given 3 arguments")
+    end
     z = p.args[1]
     A = p.args[2]
     U = p.args[3]
@@ -20,23 +22,28 @@ RecipesBase.@recipe f(p::PlotMode; pseudo::Bool, approx::Bool, verbosity)
     q = U * q
     
     #showlog = sum(abs.(diff(q))) * (1/length(q)) >= 10*eps()
-    title_str = get_mode_title(pseudo, approx, z, SS[end])
+
+    # NB. The title is broken
+    #title_str = get_mode_title(pseudo, approx, z, SS[end])
+    #title := title_str
+    
     @series begin
         seriestype := :path
         linecolor := (pseudo ? :magenta : :cyan)
-        label := "realpt"
-        title := title_str
+        label := "Real part"
         real.(q)
     end
+
+    seriestype := :path
+    linecolor := :black
+    linestyle := :dash
+
     @series begin
-        seriestype := :path
-        linecolor := :black
-        label := "abs"
+        label := "Modulus"
         abs.(q)
     end
+
     @series begin
-        seriestype := :path
-        linecolor := :black
         label := ""
         -abs.(q)
     end

@@ -1,7 +1,7 @@
 @userplot MtxExpsPlot
 
 
-RecipesBase.@recipe f(p::MtxExpsPlot, dt=0.1, nmax=50, lbmethod=:none)
+RecipesBase.@recipe function f(p::MtxExpsPlot; dt=0.1, nmax=50, lbmethod=:none)
     if length(p.args) != 1 || !(typeof(p.args[1]) <: PSAStruct)
         error("mtxexpsplot must be given a PSAStruct. Got $(typeof(p.args))")
     end
@@ -11,19 +11,22 @@ RecipesBase.@recipe f(p::MtxExpsPlot, dt=0.1, nmax=50, lbmethod=:none)
     ts, transient = get_mtxexpnorm(A, dt, nmax)
     alp = maximum(real.(ps_data.ps_dict[:ews]))
 
-    layout := @layout [a; b]
-    link := :x
+    #layout := @layout [a; b]
+    #link := :x
     seriestype := :path
     label := ""
 
     @series begin
-        subplot := 1
+        #subplot := 1
+        label := "Matrix norm"
         ts, transient
     end
     @series begin
-        subplot := 1
+        #subplot := 1
+        label := "Spectral Radius"
         ts, exp.(alp*ts)
     end
+    #=
     @series begin
         subplot := 2
         yscale := :log10
@@ -33,4 +36,5 @@ RecipesBase.@recipe f(p::MtxExpsPlot, dt=0.1, nmax=50, lbmethod=:none)
         subplot := 2
         ts, exp.(alp*ts)
     end
+    =#
 end

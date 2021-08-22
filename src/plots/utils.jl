@@ -21,7 +21,7 @@ end
 """
     get_mtxpowersnorm(A, nmax)
 
-Compute ``\|A^k\|`` for k up to `nmax`.
+Compute ``|A^k|`` for k up to `nmax`.
 """
 function get_mtxpowersnorm(A, nmax)
     transient = Vector{Float64}(undef, nmax+1)
@@ -52,7 +52,7 @@ end
 """
     get_mtxexpnorm(A, dt, nmax)
 
-Compute ``\|e^{A*k*dt}\|`` for k up to `nmax`.
+Compute ``|e^{A*k*dt}|`` for k up to `nmax`.
 """
 function get_mtxexpnorm(A, dt, nmax)
     eAdt = exp(dt*A)

@@ -34,7 +34,7 @@ RecipesBase.@recipe function f(p::SpectralPortrait; npts::Integer = 100)
 
     @series begin
         seriestype := :contour
-        linecolor --> eigtool_cgrad
+        #linecolor --> eigtool_cgrad
         xs, ys, log10.(Z)
     end
 
@@ -42,7 +42,7 @@ RecipesBase.@recipe function f(p::SpectralPortrait; npts::Integer = 100)
         seriestype := :scatter
         markercolor := :black
         markersize := 2
-        label := "eigvals"
+        label --> "eigvals"
         real.(eigA), imag.(eigA)
     end
 
