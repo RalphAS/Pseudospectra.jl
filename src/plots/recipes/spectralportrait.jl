@@ -1,8 +1,21 @@
 @userplot SpectralPortrait
-# Proof of concept Plot Recipe for spectral portraits.
-# See https://docs.juliaplots.org/latest/recipes/#case-studies for documentation on user recipes for Plots.jl
+
+"""
+    spectralportrait(A; npts=100)
+
+Plot the spectral portrait of the square matrix `A`.
+
+# Keyword arguments
+* `npts::Integer = 100` The size of the grid used for computing the levels of the pseudospectrum
+# Examples
+```jldoctest
+julia> A = Pseudospectra.grcar(40)
+julia> spectralportrait(A)
+```
+"""
+function spectralportrait end
+
 RecipesBase.@recipe function f(p::SpectralPortrait; npts::Integer = 100)
-    # RecipesBase automatically generates the spectralportrait and spectralportrait! functions, so we have to do the typechecking here
     if length(p.args) != 1 || !(typeof(p.args[1]) <: AbstractMatrix)
         error("spectralportrait must be given an AbstractMatrix. Got $(typeof(p.args))")
     end

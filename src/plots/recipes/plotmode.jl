@@ -9,13 +9,34 @@ function get_mode_title(pseudo, approx, z, s)
     return prefix * infix * "\n  \$\\lambda = " * λ_str * "\$"
 end
 
-RecipesBase.@recipe function f(p::PlotMode; pseudo=false, approx=false, verbosity=0)
-    if length(p.args) != 3
-        error("plotmode must be given 3 arguments")
+"""
+    plotmode(A, z, U=I; ...)
+
+Plot the (pseudo)eigenmode of `A` associated with (pseudo)eigenvalue `z`.
+
+# Arguments
+* `A` an arbitrary square matrix
+* `z` the real or complex (pseudo)eigenvalue whose eigenmode is to be plotted.
+* `U` optional Schur factor. The eigenmode is premultiplied by `U` before plotting.
+# Keyword arguments
+* `pseudo::Bool = false` Whether to plot the eigenmode or pseudomode.
+* `approx::Bool = false`
+* `verbosity::Int = 0` Verbosity parameter passed when computing the eigenmode.
+
+# Examples
+```jldoctest
+julia> A = Pseudospectra.grcar(40)
+julia> plotmode(A, 0.5+2.0im)
+```
+"""
+function plotmode end
+
+RecipesBase.@recipe function f(p::PlotMode, U = I; pseudo=false, approx=false, verbosity=0)
+    if length(p.args) != 2
+        error("plotmode must be given 2 arguments")
     end
-    z = p.args[1]
-    A = p.args[2]
-    U = p.args[3]
+    A = p.args[1]
+    z = p.args[2]
 
     SS, q = get_mode(A, z, pseudo, verbosity)
 

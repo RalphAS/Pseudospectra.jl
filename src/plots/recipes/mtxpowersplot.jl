@@ -1,7 +1,30 @@
 @userplot MtxPowersPlot
 
+"""
+    mtxpowersplot(A, nmax)
 
-RecipesBase.@recipe function f(p::MtxPowersPlot, nmax::Integer = 50;
+Plot the matrix norm of `A^k` for `k` up to `nmax`
+
+# Examples
+```jldoctest
+julia> opts = Dict{Symbol,Any}(:npts => 40,:ax => [-110,110,-110,110])
+julia> A = diagm(1 => 100.0*ones(4)) + diagm(-2 => 1e-4*ones(3))
+5×5 Matrix{Float64}:
+ 0.0     100.0       0.0       0.0    0.0
+ 0.0       0.0     100.0       0.0    0.0
+ 0.0001    0.0       0.0     100.0    0.0
+ 0.0       0.0001    0.0       0.0  100.0
+ 0.0       0.0       0.0001    0.0    0.0
+ julia> ps_data = new_matrix(A,opts)
+ [...]
+ julia> driver!(ps_data, opts)
+ julia> mtxpowersplot(ps_data, nmax=20)
+```
+"""
+function mtxpowersplot end
+
+RecipesBase.@recipe function f(p::MtxPowersPlot;
+    nmax::Integer = 50,
     lbmethod = :none,
     lbdk = 0.25
     )
@@ -23,13 +46,13 @@ RecipesBase.@recipe function f(p::MtxPowersPlot, nmax::Integer = 50;
     @series begin
         seriestype := :path
         subplot := 1
-        label := ""
+        label := "Matrix norm"
         powers, transient
     end
     @series begin
         seriestype := :path
         subplot := 1
-        label := ""
+        label := "Spectral Radius"
         powers, alp.^powers
     end
     # log plot

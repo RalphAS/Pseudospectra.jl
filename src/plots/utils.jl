@@ -26,7 +26,7 @@ Compute ``|A^k|`` for k up to `nmax`.
 function get_mtxpowersnorm(A, nmax)
     transient = Vector{Float64}(undef, nmax+1)
     transient[1] = 1.0
-    (min_tp, max_tp) = (-Inf, Inf)
+    (min_tp, max_tp) = (Inf, -Inf)
     mat = copy(A)
     i = 2
     transient[i] = norm(mat)
@@ -37,7 +37,7 @@ function get_mtxpowersnorm(A, nmax)
         transient[i] = norm(mat)
         min_tp = min(min_tp, transient[i])
         max_tp = max(max_tp, transient[i])
-        if max_tp > 1e130 || min_tp < 1z-130 && min_tp != 0.0
+        if (max_tp > 1e130) || ((min_tp < 1e-130) && (min_tp != 0.0))
             @warn("stopping: bounds going out of range")
             stop = true
         end
