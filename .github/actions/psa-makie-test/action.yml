@@ -4,6 +4,8 @@ description: 'variant of tests with Makie'
 runs:
   using: 'composite'
   steps:
+    - run: julia --project=. -e 'using Pkg; Pkg.add("CairoMakie"); Pkg.build("CairoMakie")'
+      shell: bash
     - run: julia --color=yes --project=. -e 'using Pkg; Pkg.test("Pseudospectra"; coverage=true);'
       shell: bash
       env:

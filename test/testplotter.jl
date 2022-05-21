@@ -23,7 +23,7 @@ else
     elseif psplotter == :PyPlot
         using PyPlot
     elseif psplotter == :Makie
-        using GLMakie
+        using CairoMakie
     else
         error("invalid ENV[\"PSPLOTTER\"]")
     end
