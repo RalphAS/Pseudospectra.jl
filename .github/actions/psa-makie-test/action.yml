@@ -1,0 +1,10 @@
+name: 'Run tests with Makie backend'
+description: 'variant of tests with Makie'
+
+runs:
+  using: 'composite'
+  steps:
+    - run: julia --color=yes --project=. -e 'using Pkg; Pkg.test("Pseudospectra"; coverage=true);'
+      shell: bash
+      env:
+        PSPLOTTER: Makie

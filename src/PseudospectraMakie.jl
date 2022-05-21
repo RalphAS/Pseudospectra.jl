@@ -19,7 +19,8 @@ module PseudospectraMakie
 using ..Makie
 using PlotUtils
 using Pseudospectra, LinearAlgebra, Printf
-using Colors: RGBA, RGB
+# using Colors: RGBA, RGB
+using PlotUtils: RGBA, RGB
 
 export MakieGUIState, psa
 
@@ -177,8 +178,8 @@ end
 
 struct ArnoldiPlotterState{T}
     axis::Scene
-    ewsnode::Node{T}
-    shiftsnode::Node{T}
+    ewsnode::Observable{T}
+    shiftsnode::Observable{T}
 end
 
 function arnoldiplotter!(gs::MakieGUIState,old_ax,opts,dispvec,infostr,
@@ -209,8 +210,8 @@ function arnoldiplotter!(gs::MakieGUIState,old_ax,opts,dispvec,infostr,
     end # ax setting
 
     if state === nothing
-        ewsnode = Node(Point2f0.(real.(ews),imag.(ews)))
-        shiftsnode = Node(Point2f0.(real.(shifts),imag.(shifts)))
+        ewsnode = Observable(Point2f.(real.(ews),imag.(ews)))
+        shiftsnode = Observable(Point2f.(real.(shifts),imag.(shifts)))
 
         ax1 = Scene()
         ms = MARKER_RATIO[] * (ax[2] - ax[1])
@@ -230,8 +231,8 @@ function arnoldiplotter!(gs::MakieGUIState,old_ax,opts,dispvec,infostr,
         # drawcmd() should force a redraw
         drawp(gs,gs.mainph,1)
     else
-        state.ewsnode[] = Point2f0.(real.(ews),imag.(ews))
-        state.shiftsnode[] = Point2f0.(real.(shifts),imag.(shifts))
+        state.ewsnode[] = Point2f.(real.(ews),imag.(ews))
+        state.shiftsnode[] = Point2f.(real.(shifts),imag.(shifts))
         if update_ax
             ms = MARKER_RATIO[] * (ax[2] - ax[1])
             for j in 1:length(state.axis)
@@ -578,12 +579,16 @@ end
 
 function _portrait(xs,ys,Z,eigA)
     fig = Figure()
-    ax1 = fig[1,1] = Axis(fig)
+    ax1 = Axis(fig)
     c = contour!(ax1,xs,ys,log10.(Z'))
-    ax = getxylims(fig)
-    ms = MARKER_RATIO[] * (ax[2] - ax[1])
+    cbar = Colorbar(fig, c)
+    # ax = getxylims()
+    # ms = MARKER_RATIO[] * (ax[2] - ax[1])
     scatter!(ax1, real(eigA), imag(eigA), color=:black, # label="eigvals",
-             markersize=ms)
+             )
+             # markersize=ms)
+    fig[1,1] = ax1
+    fig[1,2] = cbar
     fig
 end
 

@@ -19,7 +19,7 @@ jobs:
       matrix:
         version:
           - '1.6'
-        #  - '1'
+          - '1'
         os:
           - ubuntu-latest
           - macOS-latest
@@ -45,6 +45,7 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
       - uses: ./.github/actions/psa-pyplot-test
+      - uses: ./.github/actions/psa-makie-test
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
         with:

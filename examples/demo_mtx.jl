@@ -34,10 +34,10 @@ function grcar(N::Integer)
 end
 
 """
-    cheb(N)
+    cheb(N) -> D,x
 
 construct a matrix representing differentiation of rank N+1 Chebyshev
-value-space basis, based on [Trefethen2000]
+value-space basis, based on [Trefethen2000]. Also returns a vector of collocation points.
 
 [^Trefethen2000] L.N.Trefethen, *Spectral Methods in MATLAB*, SIAM, Philadelphia, 2000.
 """
@@ -222,7 +222,7 @@ function kahan(N)
     c = sqrt(1-s^2)
 
     col = -s.^(0:N-1)*c
-    K = triu(repmat(col,1,N),1)+diagm(0 => s.^(0:N-1))
+    K = triu(col .* trues(1,N),1)+diagm(0 => s.^(0:N-1))
 end
 
 """
@@ -244,7 +244,7 @@ function demmel(N,M=1e4)
   B = M^(1/(N-1))
   c = vcat(ones(1), zeros(N-1))
   r = B.^(0:N-1)
-  D = -full(Main.ToeplitzMatrices.Toeplitz(c,r))
+  D = -Matrix(Main.ToeplitzMatrices.Toeplitz(c,r))
 end
 
 """
