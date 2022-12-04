@@ -66,7 +66,7 @@ mutable struct MPLGUIState <: GUIState
 
     function MPLGUIState(ph=nothing,num=0,specialcmd=nothing;
                            headless=false, savefigs=true)
-        if specialcmd == nothing
+        if specialcmd === nothing
             dc = headless ? dcheadless : dcinteractive
         else
             dc = specialcmd
@@ -176,7 +176,7 @@ end
 
 function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts,
                          state)
-    if gs.mainph == nothing
+    if gs.mainph === nothing
         ax = vec2ax(dispvec)
     else
         if get(opts,:ARPACK_auto_ax,true)

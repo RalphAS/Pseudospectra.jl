@@ -62,7 +62,7 @@ mutable struct PlotsGUIState <: GUIState
     function PlotsGUIState(ph=nothing,num=0,specialcmd=nothing;
                            headless=false, savefigs=true,
                            separate_subplots=false)
-        if specialcmd == nothing
+        if specialcmd === nothing
             dc = headless ? dcheadless : dcinteractive
         else
             dc = specialcmd
@@ -169,7 +169,7 @@ end
 
 function arnoldiplotter!(gs::PlotsGUIState,old_ax,opts,dispvec,infostr,
                          ews,shifts,state)
-    if gs.mainph == nothing
+    if gs.mainph === nothing
         ax = vec2ax(dispvec)
     else
         if get(opts,:ARPACK_auto_ax,true)
@@ -531,8 +531,9 @@ end
 # Wrappers
 
 function _portrait(xs,ys,Z,eigA)
-    p = contour(xs,ys,log10.(Z))
-    scatter!(p, real(eigA), imag(eigA), color=:black, # label="eigvals",
+    p = plot()
+    contour!(p, xs,ys,log10.(Z))
+    scatter!(p, real(eigA), imag(eigA), color=:black, label="eigvals",
              markersize=2)
     p
 end

@@ -186,7 +186,7 @@ function xeigs(A, B, chnl = nothing;
     end
     output = (:finale, output...)
 
-    if chnl == nothing
+    if chnl === nothing
         return (output[2:end]...,)
     else
         put!(chnl,output)
@@ -386,7 +386,7 @@ function xaupd_wrapper(T, matvecA!::Function, matvecB::Function, solveSI::Functi
             # DEVNOTE: upstream has logic for analyzing a Ritz value here
             # if user invoked "pause"
 
-            if ((chnl != nothing) && get(options,:ARPACK_plots,true)
+            if ((chnl !== nothing) && get(options,:ARPACK_plots,true)
                 && (get(options,:ProgRVals,true) || get(options,:ProgPSA,false))
                 && (mod(iterx, get(options,:ARPACK_plotinterval,ncv-nev)) == 0))
                 # we only want to update about once per restart, but ARPACK

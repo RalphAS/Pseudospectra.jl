@@ -43,7 +43,7 @@ function modeplot(ps_data::PSAStruct, pkey, z=NaN; gs=defaultgs(),
         idx = argmin(dists)
         z = eigA[idx]
     end
-    if zmarker != nothing
+    if zmarker !== nothing
         zmarker(gs,z,(pseudo ? :pseudo : :eigen))
     end
     # FIXME: check for direct method, etc.

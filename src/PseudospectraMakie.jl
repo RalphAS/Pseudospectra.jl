@@ -62,7 +62,7 @@ mutable struct MakieGUIState <: GUIState
 
     function MakieGUIState(ph=nothing,num=0,specialcmd=nothing;
                            headless=false, savefigs=true)
-        if specialcmd == nothing
+        if specialcmd === nothing
             dc = headless ? dcheadless : dcinteractive
         else
             dc = specialcmd
@@ -579,16 +579,17 @@ end
 
 function _portrait(xs,ys,Z,eigA)
     fig = Figure()
-    ax1 = Axis(fig)
-    c = contour!(ax1,xs,ys,log10.(Z'))
-    cbar = Colorbar(fig, c)
+    # ax1 = Axis(fig[1,1])
+    # c = contour!(ax1,xs,ys,log10.(Z'))
+    ax1, c = contour(fig[1,1],xs,ys,log10.(Z'))
+    cbar = Colorbar(fig[1,2], c)
     # ax = getxylims()
     # ms = MARKER_RATIO[] * (ax[2] - ax[1])
     scatter!(ax1, real(eigA), imag(eigA), color=:black, # label="eigvals",
              )
              # markersize=ms)
-    fig[1,1] = ax1
-    fig[1,2] = cbar
+    # fig[1,1] = ax1
+    # fig[1,2] = cbar
     fig
 end
 

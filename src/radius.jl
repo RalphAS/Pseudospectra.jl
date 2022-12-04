@@ -54,7 +54,7 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
 #  For large (esp. sparse) A, see Overton's psapsr code
 
     if (plotfig > 0)
-        if (!isdefined(Main, :PyPlot) || !isdefined(:plot)
+        if (!isdefined(Main, :PyPlot) || !isdefined(@__MODULE__,:plot)
             || !(plot === Main.PyPlot.plot))
             @warn("psa_radius: plotting is only implemented for PyPlot")
             plotfig = 0
@@ -171,7 +171,7 @@ function pspr_2way_rad(A,mE,theta,realtol,iter,rold,plotfig,verbosity)
     n = size(A,1)
     Aisreal = (eltype(A) <: Real)
     rnew = zeros(size(theta)...)
-    for j in 1:length(theta)
+    for j in eachindex(theta)
         K = vcat(hcat(im*exp(im*theta[j])*A',mE),hcat(-mE,im*exp(-im*theta[j])*A))
         eK = eigvals(K)
 
@@ -256,7 +256,7 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
         # ϵ-pseudospectrum boundary. The ones actually there have
         # smallest singular value equal to ϵ
         idx2 = Int[]
-        for j in 1:length(theta)
+        for j in eachindex(theta)
             (theta[j] < 0) && (theta[j] += 2π)
             Ashift = A - (r*(cos(theta[j])+im*sin(theta[j]))) * I
             s = svdvals(Ashift)
@@ -281,7 +281,7 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
         # shift thetawant (angle from previous iteration) into canon. interval
         (thetawant < 0) && (thetawant += 2π)
 
-        for j in 1:length(theta)
+        for j in eachindex(theta)
             thetalow = theta[j]
             if j < length(theta)
                 thetahigh = theta[j+1]
