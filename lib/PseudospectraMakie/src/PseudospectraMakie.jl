@@ -16,7 +16,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraMakie
 
-using ..Makie
+using Makie
 using PlotUtils
 using Pseudospectra, LinearAlgebra, Printf
 # using Colors: RGBA, RGB
@@ -760,5 +760,9 @@ end
 const eigtool_cgrad = etcgrad()
 
 default_opts[:contourkw][:colormap] = eigtool_cgrad;
+
+function __init__()
+    Pseudospectra._register_plotter(:Makie, MakieGUIState)
+end
 
 end # module

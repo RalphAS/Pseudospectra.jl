@@ -13,51 +13,29 @@ const _currentplotter = Ref{Symbol}(:undef)
 const _available_plotters = Symbol[:PyPlot, :Plots,
                                    :Makie,
                                    ]
-const _enabled_plotters = Dict{Symbol,Bool}(
-    :PyPlot => false, :Plots => false,
-    :Makie => false,
-)
+const _enabled_plotters = Dict{Symbol,Bool}()
+const _guistates = Dict{Symbol,Any}()
 
 const _currentgs = Ref{Union{Nothing,GUIState}}(nothing)
 
-function link_pyplot()
-    include("PseudospectraMPL.jl")
-    _enabled_plotters[:PyPlot] = true
-end
-
-function link_plots()
-    include("PseudospectraPlots.jl")
-    _enabled_plotters[:Plots] = true
-end
-
-function link_makie()
-    include("PseudospectraMakie.jl")
-    _enabled_plotters[:Makie] = true
+# We could restrict args, but footguns are the Julian way
+function _register_plotter(s::Symbol, guistatefn)
+    _enabled_plotters[s] = true
+    _guistates[s] = guistatefn
 end
 
 getpsplotter() = _currentplotter[]
 
 """
-    setpsplotter(plotter::Symbol=:default)
+    setpsplotter(plotter::Symbol)
 
 Select a plotting package for use with Pseudospectra.
 
-Currently `:Plots` and `:PyPlot` are implemented.
-Defaults to `:Plots` unless PyPlot is already imported without Plots.
+This is typically invoked automatically upon loading one of the associated packages.
 """
-function setpsplotter(plotter::Symbol=:default)
-    if plotter == :default
-        if _enabled_plotters[:PyPlot] && !_enabled_plotters[:Plots]
-            plotter = :PyPlot
-        else
-            plotter = :Plots
-        end
-    end
-    if plotter ∉ _available_plotters
-        throw(ArgumentError("plotter argument must be in $_available_plotters"))
-    end
-    if !_enabled_plotters[plotter]
-        error("selected or default plotter '$plotter' is not enabled")
+function setpsplotter(plotter::Symbol)
+    if ! get(_enabled_plotters,plotter,false)
+        throw(ArgumentError("Selected plotter '$plotter' is not enabled;\nan appropriate package (e.g. Pseudospectra$(plotter)) must be loaded first."))
     end
     _currentplotter[]=plotter
     nothing
@@ -71,22 +49,12 @@ Construct a `GUIState` for subsequent use by Pseudospectra functions.
 Assumes plotting package has been chosen via `setpsplotter()`.
 """
 function setgs(; headless=false, savefigs=true, fig_id=0)
-    if _currentplotter[] ∈ [:default, :Plots]
-        gs = PseudospectraPlots.PlotsGUIState(nothing,fig_id,nothing;
-                                                   headless=headless,
-                                                   savefigs=savefigs)
-    elseif _currentplotter[] == :PyPlot
-        gs = PseudospectraMPL.MPLGUIState(nothing,fig_id,nothing;
-                                               headless=headless,
-                                               savefigs=savefigs)
-    elseif _currentplotter[] == :Makie
-        gs = PseudospectraMakie.MakieGUIState(nothing,fig_id,nothing;
-                                               headless=headless,
-                                               savefigs=savefigs)
-    else
+    fn = get(_guistates, _currentplotter[], nothing)
+    if fn === nothing
         throw(ErrorException("use `setpsplotter` to establish plotting "
                              * "package for Pseudospectra first"))
     end
+    gs = fn(nothing,fig_id,nothing; headless=headless, savefigs=savefigs)
     _currentgs[] = gs
     return gs
 end

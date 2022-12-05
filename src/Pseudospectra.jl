@@ -23,7 +23,6 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 using ProgressMeter
 
 using LinearAlgebra, SparseArrays, Arpack, Printf
-using Requires
 
 export new_matrix, driver!, spectralportrait
 export psa_compute, psa_radius, psa_abscissa
@@ -741,11 +740,5 @@ _basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(
 ################################################################
 # FIXME: until we think of a better way to handle this:
 include("../examples/demo_mtx.jl")
-
-function __init__()
-    @require PyPlot="d330b81b-6aea-500a-939a-2ce795aea3ee" link_pyplot()
-    @require Plots="91a5bcdd-55d7-5caf-9e0b-520d859cae80" link_plots()
-    @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" link_makie()
-end
 
 end # module
