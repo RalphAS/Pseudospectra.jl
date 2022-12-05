@@ -10,6 +10,10 @@ non-symmetric matrices, and plotting them along with eigenvalues
 ("spectral portraits"). Some related computations and plots are
 also provided.
 
+## IMPORTANT NOTICE
+**The package version in development (v0.3) has a modified interface,** using separate
+packages for plotting. This page describes the currently-registered (stable) version, v0.2.
+
 ## Mathematical background
 Whereas the spectrum of a matrix is the set of its eigenvalues,
 a pseudospectrum is the set of complex numbers "close" to the spectrum
@@ -47,8 +51,8 @@ The figure shows a section of the complex plane with eigenvalues and contours
 of `log10(ϵ)`.
 
 ## Package context
-Pseudospectra.jl (along with a QML-based GUI, in the forthcoming PseudospectraView
-package) is essentially a translation of the acclaimed MATLAB-based EigTool
+Pseudospectra.jl (along with associated graphical packages) is largely a translation of
+the acclaimed MATLAB-based EigTool
 ([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool)),
 code now hosted [on GitHub](https://github.com/eigtool/eigtool).
 
@@ -56,7 +60,7 @@ No endorsement or promotion of Pseudospectra.jl by the authors of EigTool
 is implied.
 
 Specific documentation for Pseudospectra is a work in progress; a draft is
-available [here](https://RalphAS.github.io/Pseudospectra.jl/dev). See the
+available [here](https://RalphAS.github.io/Pseudospectra.jl/stable). See the
 examples and tests for more.
 
 

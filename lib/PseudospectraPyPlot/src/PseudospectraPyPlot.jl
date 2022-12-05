@@ -14,9 +14,9 @@ Portions derived from EigTool:
 SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
-module PseudospectraMPL
+module PseudospectraPyPlot
 
-using ..PyPlot
+using PyPlot
 using Pseudospectra, LinearAlgebra, Printf
 
 export MPLGUIState, psa
@@ -711,5 +711,9 @@ function et_cmap()
 end
 
 PyPlot.register_cmap("eigtool",et_cmap())
+
+function __init__()
+    Pseudospectra._register_plotter(:PyPlot, MPLGUIState)
+end
 
 end # module

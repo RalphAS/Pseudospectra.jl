@@ -1,10 +1,10 @@
-name = "PseudospectraMakie"
-uuid = "f576077d-91d1-4147-9bf4-e6b538551c5a"
+name = "PseudospectraPlots"
+uuid = "f935e9ce-c948-4c75-aac5-3be6c6a69e4c"
 version = "0.1.0"
 
 [deps]
-Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Pseudospectra = "d6c5b33e-0240-5bd5-a771-a97ae748a961"

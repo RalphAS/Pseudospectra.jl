@@ -16,7 +16,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraPlots
 
-using ..Plots
+using Plots
 using Pseudospectra, LinearAlgebra, Printf
 
 export PlotsGUIState, psa
@@ -694,5 +694,9 @@ end
 const eigtool_cgrad = etcgrad()
 
 default_opts[:contourkw][:linecolor] = eigtool_cgrad;
+
+function __init__()
+    Pseudospectra._register_plotter(:Plots, PlotsGUIState)
+end
 
 end # module
