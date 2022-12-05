@@ -2,7 +2,8 @@
 
 [![GitHub CI Build Status](https://github.com/RalphAS/Pseudospectra.jl/workflows/CI/badge.svg)](https://github.com/RalphAS/Pseudospectra.jl/actions)
 [![Coverage Status](http://codecov.io/github/RalphAS/Pseudospectra.jl/coverage.svg?branch=master)](http://codecov.io/github/RalphAS/Pseudospectra.jl?branch=master)
-[![Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://RalphAS.github.io/Pseudospectra.jl/dev)
+[![Documentation/dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://RalphAS.github.io/Pseudospectra.jl/dev)
+[![Documentation/dev](https://img.shields.io/badge/docs-stable-blue.svg)](https://RalphAS.github.io/Pseudospectra.jl/stable)
 
 # Introduction
 Pseudospectra is a Julia package for computing pseudospectra of
