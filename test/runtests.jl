@@ -1,23 +1,10 @@
-# To run only selected tests:
-# $julia -e 'include("test/runtests.jl")' TEST1...
+using Pseudospectra, Test, LinearAlgebra
 
-# To run during development (from REPL) include this file INSIDE A MODULE
-
-using Pseudospectra, Test
-
-tests = ["basic","threads","arpack1","medcplx","medrect","smrect","spdirect",
-          "projection_and_transient","radius_abscissa","negproj","eigsnoconv",
-         "numrange", "linmap", "big", "power_transient", "swmethod", "zoom",
-          ]
-
-if length(ARGS) > 0
-    tests = ARGS
+@testset "psa_compute" begin
+    n = 32
+    A = triu(rand(n, n))
+    ax = [-5,5,-5,5]
+    res = Pseudospectra.psa_compute(A, 40, ax, [], Dict{Symbol,Any}())
 end
 
-include("testplotter.jl")
-
-for f in tests
-    println("Testing $f functionality")
-    fnam = f*".jl"
-    include(fnam)
-end
+# more purely computational tests will go here...
