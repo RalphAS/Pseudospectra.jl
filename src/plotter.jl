@@ -13,47 +13,50 @@ const _currentplotter = Ref{Symbol}(:undef)
 const _available_plotters = Symbol[:PyPlot, :Plots,
                                    :Makie,
                                    ]
-const _enabled_plotters = Dict{Symbol,Bool}()
+const _enabled_plotters = Dict{Symbol, PSAPlotter}()
 const _guistates = Dict{Symbol,Any}()
 
 const _currentgs = Ref{Union{Nothing,GUIState}}(nothing)
 
 # We could restrict args, but footguns are the Julian way
-function _register_plotter(s::Symbol, guistatefn)
-    _enabled_plotters[s] = true
+function _register_plotter(s::Symbol, guistatefn, pp)
+    _enabled_plotters[s] = pp
     _guistates[s] = guistatefn
 end
 
-getpsplotter() = _currentplotter[]
+function getpsplotter()
+    if _currentplotter[] == :undef
+        ks = keys(_enabled_plotters)
+        nk = length(ks)
+        if nk == 0
+            throw(ErrorException("No plotting interface is enabled.\nAn appropriate package (i.e. Plots, PyPlot, Makie) must be loaded."))
+        else
+            # we can't index Dict keys, but we can iterate
+            for k in ks
+                setpsplotter(k)
+                break
+            end
+            if nk > 1
+                @info "Using $(ks[1]) as plotting package for Pseudospectra"
+            end
+        end
+    end
+    return _enabled_plotters[_currentplotter[]]
+end
 
 """
     setpsplotter(plotter::Symbol)
 
 Select a plotting package for use with Pseudospectra.
 
-This is typically invoked automatically upon loading one of the associated packages.
+This is typically invoked automatically upon loading one of the associated packages,
+and may also be used to select one if several are loaded.
 """
 function setpsplotter(plotter::Symbol)
-    if ! get(_enabled_plotters,plotter,false)
+    if get(_enabled_plotters, plotter, nothing) === nothing
         throw(ArgumentError("Selected plotter '$plotter' is not enabled;\nan appropriate package (i.e. Plots, PyPlot, Makie) must be loaded first."))
     end
     _currentplotter[]=plotter
-    nothing
-end
-
-function setpsplotter()
-    if _currentplotter == :undef
-        ks = keys(_enabled_plotters)
-        nk = length(ks)
-        if nk == 0
-            throw(ErrorException("No plotting interface is enabled.\nAn appropriate package (i.e. Plots, PyPlot, Makie) must be loaded."))
-        else
-            setpsplotter(ks[1])
-            if nk > 1
-                @info "Using $(ks[1]) as plotting package for Pseudospectra"
-            end
-        end
-    end
     nothing
 end
 

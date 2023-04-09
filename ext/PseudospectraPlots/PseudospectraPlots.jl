@@ -19,7 +19,7 @@ module PseudospectraPlots
 isdefined(Base, :get_extension) ? (using Plots) : (using ..Plots)
 using Pseudospectra, LinearAlgebra, Printf
 
-export PlotsGUIState, psa
+export PlotsGUIState
 
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
@@ -28,13 +28,9 @@ import Pseudospectra: mtxexpsplot, mtxpowersplot
 import Pseudospectra: zoomin!, zoomout!, _portrait
 
 # we use these internals here:
-import Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
-import Pseudospectra: dummyqdlg, replqdlg, transient_bestlb
-import Pseudospectra: numrange!
-
-# for convenience (so one could import just this module)
-import Pseudospectra: new_matrix, driver!
-export new_matrix, driver!
+using Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
+using Pseudospectra: dummyqdlg, replqdlg, transient_bestlb
+using Pseudospectra: numrange!
 
 const default_opts = Dict{Symbol,Any}(
     :contourstyle => nothing, :markeig => true,
@@ -45,6 +41,8 @@ const default_opts = Dict{Symbol,Any}(
     :contourkw => Dict{Symbol,Any}(:linewidth => 3,
                                    :fill => false)
 )
+
+struct PlotsPlotter <: Pseudospectra.PSAPlotter end
 
 mutable struct PlotsGUIState <: GUIState
     mainph # opaque backend object for main plot
@@ -530,7 +528,7 @@ end
 ################################################################
 # Wrappers
 
-function _portrait(xs,ys,Z,eigA)
+function _portrait(::PlotsPlotter,xs,ys,Z,eigA)
     p = plot()
     contour!(p, xs,ys,log10.(Z))
     scatter!(p, real(eigA), imag(eigA), color=:black, label="eigvals",
@@ -545,7 +543,7 @@ Compute and plot pseudospectra of a matrix.
 
 This is a rudimentary command-line driver for the Pseudospectra package.
 """
-function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
+function psa(::PlotsPlotter, A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
     allopts = merge(default_opts,optsin)
     ps_data = new_matrix(A,allopts)
         gs = PlotsGUIState()
@@ -696,7 +694,7 @@ const eigtool_cgrad = etcgrad()
 default_opts[:contourkw][:linecolor] = eigtool_cgrad;
 
 function __init__()
-    Pseudospectra._register_plotter(:Plots, PlotsGUIState)
+    Pseudospectra._register_plotter(:Plots, PlotsGUIState, PlotsPlotter())
 end
 
 end # module

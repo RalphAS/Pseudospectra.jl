@@ -2,7 +2,7 @@
 
 This file is part of Pseudospectra.jl.
 
-Copyright (c) 2017 Ralph A. Smith
+Copyright (c) 2017,2023 Ralph A. Smith
 
 SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
@@ -42,6 +42,8 @@ mutable struct LevelDesc
         new(isunif,full_levels,first,step,last)
     end
 end
+
+abstract type PSAPlotter end
 
 """
     Portrait

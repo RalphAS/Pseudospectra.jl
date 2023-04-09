@@ -1,4 +1,4 @@
-using Pseudospectra, PseudospectraPyPlot, Test, Pkg
+using Pseudospectra, Test, Pkg
 
 parentdir = Pkg.pkgdir(Pseudospectra)
 

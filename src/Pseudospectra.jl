@@ -20,9 +20,9 @@ SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 
-using ProgressMeter
-
 using LinearAlgebra, SparseArrays, Arpack, Printf
+
+using ProgressMeter
 
 export new_matrix, driver!, spectralportrait
 export psa_compute, psa_radius, psa_abscissa
@@ -699,9 +699,7 @@ This is a convenience wrapper for simple cases; see the Pseudospectra
 package documentation for more elaborate interfaces.
 """
 function spectralportrait(A0 :: AbstractMatrix; npts=100)
-    if _currentplotter[] == :undef
-        setpsplotter()
-    end
+    pp = getpsplotter()
     local ps_data
     try
         ps_data = new_matrix(A0)
@@ -726,7 +724,7 @@ function spectralportrait(A0 :: AbstractMatrix; npts=100)
                                                              zoom.ax,
                                                              eigA,psa_opts,
                                                              B)
-    return _portrait(xs,ys,Z,eigA)
+    return _portrait(pp,xs,ys,Z,eigA)
 end
 
 _basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(
@@ -747,9 +745,9 @@ end
 
 @static if !isdefined(Base, :get_extension)
 function __init__()
-    @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" include("../ext/PseudospectraMakie/src/PseudospectraMakie.jl")
-    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("../ext/PseudospectraPlots/src/PseudospectraPlots.jl")
-    @require PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee" include("../ext/PseudospectraPyPlot/src/PseudospectraPyPlot.jl")
+    @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" include("../ext/PseudospectraMakie/PseudospectraMakie.jl")
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("../ext/PseudospectraPlots/PseudospectraPlots.jl")
+    @require PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee" include("../ext/PseudospectraPyPlot/PseudospectraPyPlot.jl")
 end
 end
 
