@@ -35,9 +35,25 @@ This is typically invoked automatically upon loading one of the associated packa
 """
 function setpsplotter(plotter::Symbol)
     if ! get(_enabled_plotters,plotter,false)
-        throw(ArgumentError("Selected plotter '$plotter' is not enabled;\nan appropriate package (e.g. Pseudospectra$(plotter)) must be loaded first."))
+        throw(ArgumentError("Selected plotter '$plotter' is not enabled;\nan appropriate package (i.e. Plots, PyPlot, Makie) must be loaded first."))
     end
     _currentplotter[]=plotter
+    nothing
+end
+
+function setpsplotter()
+    if _currentplotter == :undef
+        ks = keys(_enabled_plotters)
+        nk = length(ks)
+        if nk == 0
+            throw(ErrorException("No plotting interface is enabled.\nAn appropriate package (i.e. Plots, PyPlot, Makie) must be loaded."))
+        else
+            setpsplotter(ks[1])
+            if nk > 1
+                @info "Using $(ks[1]) as plotting package for Pseudospectra"
+            end
+        end
+    end
     nothing
 end
 

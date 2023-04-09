@@ -741,4 +741,16 @@ _basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(
 # FIXME: until we think of a better way to handle this:
 include("../examples/demo_mtx.jl")
 
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+@static if !isdefined(Base, :get_extension)
+function __init__()
+    @require Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a" include("../ext/PseudospectraMakie/src/PseudospectraMakie.jl")
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("../ext/PseudospectraPlots/src/PseudospectraPlots.jl")
+    @require PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee" include("../ext/PseudospectraPyPlot/src/PseudospectraPyPlot.jl")
+end
+end
+
 end # module

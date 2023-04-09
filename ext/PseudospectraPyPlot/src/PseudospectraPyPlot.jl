@@ -1,10 +1,10 @@
 #=
- Makie drivers etc. for Pseudospectra.jl
+ PyPlot.jl (Matplotlib) drivers etc. for Pseudospectra.jl
 
 This file is part of Pseudospectra.jl.
 
 Julia implementation
-Copyright (c) 2020-2021 Ralph A. Smith
+Copyright (c) 2017 Ralph A. Smith
 
 Portions derived from EigTool:
  Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
@@ -14,15 +14,12 @@ Portions derived from EigTool:
 SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
-module PseudospectraMakie
+module PseudospectraPyPlot
 
-using Makie
-using PlotUtils
+isdefined(Base, :get_extension) ? (using PyPlot) : (using ..PyPlot)
 using Pseudospectra, LinearAlgebra, Printf
-# using Colors: RGBA, RGB
-using PlotUtils: RGBA, RGB
 
-export MakieGUIState, psa
+export MPLGUIState, psa
 
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
@@ -41,76 +38,83 @@ export new_matrix, driver!
 
 const default_opts = Dict{Symbol,Any}(
     :contourstyle => nothing, :markeig => true,
+    :project_fraction => 0.5, :scale_equal => false,
     :no_waitbar => false,
-    # No satisfactory colormap choices are built into Plots.
-    # So we bit the bullet and implemented the one from EigTool
-    # (which is really good); its spec is added below.
-    :contourkw => Dict{Symbol,Any}(:linewidth => 3,
-                                   :fill => false)
+    # good colormaps: "jet" w/ alpha=0.7, "Dark2" w/ alpha=0.8
+    :contourkw => Dict{Symbol,Any}(:linewidths => 3,
+                                                :extend => "both",
+                                                :cmap => "jet"),
+    :contourfkw => Dict{Symbol,Any}(:alpha => 0.7,
+                                                 :extend => "both",
+                                                 :cmap => "jet"),
+    :cbarkw => Dict{Symbol,Any}(:extendrect => true),
+    :fillcontour => true
 )
 
-mutable struct MakieGUIState <: GUIState
-    mainph # opaque backend object for main plot
+mutable struct MPLGUIState <: GUIState
+    mainph # opaque backend object for main plot object
+    # the fig. numbers are redundant, but more convenient
     mainfignum::Int
-    drawcmd # function to display a plot object (pluggable for GUI use)
-    ph2 # opaque backend object for secondary plot
+    secondaryph # opaque backend object for secondary plot object
+    secondaryfignum::Int
+    drawcmd
     markerlist
     counter
     is_headless::Bool
     do_savefig::Bool
     figfile
 
-    function MakieGUIState(ph=nothing,num=0,specialcmd=nothing;
+    function MPLGUIState(ph=nothing,num=0,specialcmd=nothing;
                            headless=false, savefigs=true)
         if specialcmd === nothing
             dc = headless ? dcheadless : dcinteractive
         else
             dc = specialcmd
         end
-        new(ph,num,dc,nothing,[],0,headless,savefigs,"")
+        if headless # CHECKME
+            ioff()
+        else
+            ion()
+        end
+        new(ph,num,nothing,0,dc,[],0,headless,savefigs,"")
     end
 end
 
-isheadless(gs::MakieGUIState) = gs.is_headless
+isheadless(gs::MPLGUIState) = gs.is_headless
 
-function fillopts(gs::MakieGUIState,optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
+function fillopts(gs::MPLGUIState, optsin::Dict{Symbol,Any}=Dict{Symbol,Any}())
     opts = merge(default_opts,optsin)
 end
 
-function drawp(gs::MakieGUIState, p, id)
+function drawp(gs::MPLGUIState, p, id)
     gs.drawcmd(gs,p,id)
 end
 
-isIJulia() = isdefined(Main, :IJulia) && Main.IJulia.inited
+# isIJulia() = isdefined(Main, :IJulia) && Main.IJulia.inited
 
-function dcinteractive(gs::MakieGUIState,p,n)
-    # CHECKME: do we need special treatment for
-    # if isIJulia()
-    display(p)
+function dcinteractive(gs::MPLGUIState,p,n)
+    # IJulia might need special handling here
     nothing
 end
 
-function dcheadless(gs::MakieGUIState,p,n)
+function dcheadless(gs::MPLGUIState,p,n)
     if gs.do_savefig
+        # TODO: make sure p is current
         if length(gs.figfile) > 0
             fn = gs.figfile
         else
-            fn = tempname() * ".png"
+            fn = tempname()
         end
-        Makie.save(fn, p)
-        @info("graph saved in $(fn)")
+        savefig(fn * ".png")
+        println("graph saved in $(fn).png")
     end
     nothing
 end
 
-# Makie weirdness
-# markersize is in data units (pace Makie docs) so we have to adjust it
-const MARKER_RATIO = Ref(0.03)
-
 ################################################################
-# The main plotting functions
+# Plotting routines
 
-function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
+function redrawcontour(gs::MPLGUIState, ps_data::PSAStruct, opts)
     zoom = ps_data.zoom_list[ps_data.zoom_pos]
     ps_dict = ps_data.ps_dict
     levels = expandlevels(zoom.levels)
@@ -118,29 +122,30 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
     if !zoom.computed || isempty(zoom.Z)
         error("should not get here w/ uncomputed zoom")
     end
-    eigA = ps_dict[:proj_ews]
-    fig = Figure(resolution = (500, 500))
-    ax1 = Axis(fig)
-    ctx = ax1
-    gs.mainph = fig
-
-    if isempty(levels)
-        clines = contour!(ctx,x,y,log10.(Z');opts[:contourkw]...)
-    else
-        kwargs = merge(Dict(:levels => levels),opts[:contourkw])
-        clines = contour!(ctx,x,y,log10.(Z'); kwargs...)
-        # gs.mainph = quantour(x,y,log10.(Z), levels; opts[:contourkw]...)
-    end
-    cbar = Colorbar(fig, clines, label="log10(ϵ)", labelpadding=0)
-        if !isempty(eigA)
-            scatter!(ctx,real(eigA),imag(eigA),color=:black)
+    eigA = ComplexF64.(ps_dict[:proj_ews])
+        figure(gs.mainfignum) # in case the user looked elsewhere
+        clf()
+        !isempty(eigA) && plot(real(eigA),imag(eigA),"k.")
+        setxylims!(gs.mainph,zoom.ax)
+        if isempty(levels)
+            contour(x,y,log10.(Z);opts[:contourkw]...)
+            contourf(x,y,log10.(Z);opts[:contourfkw]...)
+        else
+            kwargs = merge(Dict(:levels => levels),opts[:contourkw])
+            contour(x,y,log10.(Z);kwargs...)
+            if get(opts,:fillcontour,true)
+                kwargs = merge(Dict(:levels => levels),opts[:contourfkw])
+                contourf(x,y,log10.(Z);kwargs...)
+            end
+        end
+        if get(opts,:colorbar,true)
+            colorbar(;opts[:cbarkw]...)
         end
         if get(opts,:showimagax,false)
-            lines!(ctx,[0,0],zoom.ax[3:4],color=:black, linestyle=:dash)
+            plot([0,0],zoom.ax[3:4],"k-")
         end
         if get(opts,:showunitcircle,false)
-            lines!(ctx,cos.((0:0.01:2)*π),sin.((0:0.01:2)*π),
-                  color=:black, linestyle=:dash)
+            plot(cos.((0:0.01:2)*π),sin.((0:0.01:2)*π),"k-")
         end
         if get(opts,:showfov,false)
             if isempty(get(ps_dict,:schur_mtx,[]))
@@ -149,21 +154,14 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
                 if isempty(get(ps_dict,:fov,[]))
                     numrange!(ps_data,get(opts,:fov_npts,20))
                 end
-                lines!(ctx,real.(ps_dict[:fov]),imag.(ps_dict[:fov]),
-                       color=:black)
+                plot(real.(ps_dict[:fov]),imag.(ps_dict[:fov]),"k--")
             end
         end
-    setxylims!(ctx,zoom.ax)
-    fig[1,1] = ax1
-    fig[1,2] = cbar
     drawp(gs,gs.mainph,1)
     nothing
 end
 
-"""
-make a surface plot of the current spectral portrait
-"""
-function surfplot(gs::MakieGUIState, ps_data::PSAStruct, opts)
+function surfplot(gs::MPLGUIState, ps_data::PSAStruct, opts)
     zoom = ps_data.zoom_list[ps_data.zoom_pos]
     zoom.computed || return
     nx,ny = size(zoom.Z)
@@ -171,111 +169,100 @@ function surfplot(gs::MakieGUIState, ps_data::PSAStruct, opts)
     # TODO: control plotting of mesh, e.g.
     # line_freq = floor(Int,min(nx,ny)/10)
     # TODO: add cylinders for eigenvalues, like upstream
-    ph = Scene()
-    surface!(ph,zoom.x,zoom.y,-log10.(zoom.Z'))
-    drawp(gs,ph,2)
+        figure()
+        surf(zoom.x,zoom.y,-log10.(zoom.Z))
+    drawp(gs,gs.mainph,2)
 end
 
-struct ArnoldiPlotterState{T}
-    axis::Scene
-    ewsnode::Observable{T}
-    shiftsnode::Observable{T}
-end
-
-function arnoldiplotter!(gs::MakieGUIState,old_ax,opts,dispvec,infostr,
-                         ews,shifts,state)
-    update_ax = false
-
-    if !get(opts,:ARPACK_auto_ax,true)
-        @warn("non-auto axes for ARPACK not implemented")
-        opts[:ARPACK_auto_ax] = true
-    end
-    if true # get(opts,:ARPACK_auto_ax,true)
+function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts,
+                         state)
+    if gs.mainph === nothing
         ax = vec2ax(dispvec)
-        if  !(state === nothing)
+    else
+        if get(opts,:ARPACK_auto_ax,true)
+            ax = vec2ax(dispvec)
             if isempty(old_ax)
-                append!(old_ax,getxylims(state.axis))
-                update_ax = true
+                append!(old_ax,getxylims(gs.mainph))
             else
-#                copy!(old_ax,getxylims(state.axis))
+                copy!(old_ax,getxylims(gs.mainph))
                 ax[1] = min(ax[1],old_ax[1])
                 ax[3] = min(ax[3],old_ax[3])
                 ax[2] = max(ax[2],old_ax[2])
                 ax[4] = max(ax[4],old_ax[4])
-                update_ax = !all(ax .== old_ax)
             end
+            # ps_data.zoom_list[ps_data.zoom_pos].ax = ax
         else
-            update_ax = true
+            @warn("non-auto axes not implemented")
+            # CHECKME: are we sure this is ready?
+            # ax = ps_data.zoom_list[ps_data.zoom_pos].ax
         end
     end # ax setting
 
-    if state === nothing
-        ewsnode = Observable(Point2f.(real.(ews),imag.(ews)))
-        shiftsnode = Observable(Point2f.(real.(shifts),imag.(shifts)))
-
-        ax1 = Scene()
-        ms = MARKER_RATIO[] * (ax[2] - ax[1])
-        s1 = scatter!(ax1,ewsnode,color=:black,markersize=ms)
-        title(ax1, infostr)
-
-        s2 = scatter!(ax1,shiftsnode,
-                      color=:red,marker=:+,markersize=ms,strokewidth=0.1*ms)
-        setxylims!(ax1,ax)
-        leg = legend([s1,s2],["ews","shifts"])
-        scene = Scene()
-        vbox(ax1,leg; parent=scene)
-
-        state = ArnoldiPlotterState(ax1, ewsnode, shiftsnode)
-        gs.mainph = scene
-
-        # drawcmd() should force a redraw
+        # figure(mainfigure)
+        print(".") # sometimes apparently needed to force a redraw
+        clf()
+        # if get(opts,:ProgPSA,false)
+        #  TODO: draw pseudospectra
+        # end
+        plot(real.(shifts),imag.(shifts),"r+")
+        plot(real.(ews),imag.(ews),"k.")
+        axis(ax)
+        #text(?,?,infostr,fontsize=12,fontweight=bold)
+        title(infostr)
         drawp(gs,gs.mainph,1)
-    else
-        state.ewsnode[] = Point2f.(real.(ews),imag.(ews))
-        state.shiftsnode[] = Point2f.(real.(shifts),imag.(shifts))
-        if update_ax
-            ms = MARKER_RATIO[] * (ax[2] - ax[1])
-            for j in 1:length(state.axis)
-                if state.axis[j] isa Scatter
-                    state.axis[j].attributes[:markersize] = ms
-                end
-            end
-            setxylims!(state.axis, ax)
-            copy!(old_ax, ax)
-        end
-    end
-    sleep(0.05)
-    return state
+        draw()
+    #   sleep(0.01)
+    return nothing
 end
 
-function ewsplotter(gs::MakieGUIState, ews::Vector, zoom)
-    if isIJulia()
-        # unless we can figure out how to overplot
-        return nothing
-    end
+"""
+    selectfig(gs,main::Bool)
 
-    fig = Figure()
-    gs.mainph = fig
-    ax1 = fig[1,1] = Axis(fig)
-    scatter!(ax1, real(ews),imag(ews),color=:black)
-    setxylims!(ax1,zoom.ax)
+start a new figure, or attach to an existing one.
+"""
+function selectfig(gs::MPLGUIState,main::Bool)
+    if main
+        if gs.mainfignum > 0
+            figure(gs.mainfignum)
+        else
+            fh = figure()
+            gs.mainph = fh
+            gs.mainfignum = fh.number
+        end
+    else
+        if gs.secondaryfignum > 0
+            figure(gs.secondaryfignum)
+        else
+            fh = figure()
+            gs.secondaryph = fh
+            gs.secondaryfignum = fh.number
+        end
+    end
+end
+
+function ewsplotter(gs::MPLGUIState, ews::Vector, zoom)
+    selectfig(gs,true)
+    clf()
+    plot(real(ews),imag(ews),"k.")
+    isempty(zoom.ax) && (zoom.ax = vec2ax(ews))
+    setxylims!(gs.mainph,zoom.ax)
     drawp(gs,gs.mainph,1)
 end
 
-function plotmode(gs::MakieGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
+function plotmode(gs::MPLGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     m,n = size(A)
     if pseudo
         modestr = "Pseudo"
         niter = 20
         q = normalize!(randn(n) + randn(n)*im)
         Ss,q = psmode_inv_lanczos(A,q,z,1e-15,niter)
-        the_col = :magenta
+        the_col = "magenta"
     else
         modestr = "Eigen"
         Ss,q = oneeigcond(A,z,verbosity,
                           dlg=ifelse(isheadless(gs),dummyqdlg,replqdlg))
         the_cond = Ss
-        the_col = :cyan
+        the_col = "cyan"
     end
     # FIXME: bail out on error
 
@@ -286,42 +273,43 @@ function plotmode(gs::MakieGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     x = collect(1:length(q))
     showlog = sum(abs.(diff(q))) * (1/length(q)) >= 10*eps()
     if pseudo
-        the_str = @sprintf("ϵ = %15.2e",Ss[end])
+        the_str = @sprintf("\$\\epsilon = %15.2e\$",Ss[end])
     else
-        the_rel = approx ? "≈" : "="
-        the_str = "κ(λ) " * the_rel *
-            @sprintf("%15.2e",the_cond)
+        the_rel = approx ? "\\approx" : "="
+        the_str = "\$\\kappa(\\lambda) " * the_rel *
+            @sprintf("%15.2e\$",the_cond)
     end
     λ_str = @sprintf("%12g%+12gi",real(z),imag(z))
-    ax1_title = "$(modestr)mode: " * the_str * "\nλ=" * λ_str
-    fig = Figure(resolution = (500, 500))
-    ax1 = fig[1,1] = Axis(fig, title = ax1_title)
-    l1=lines!(ax1,x,real.(q),color=the_col)
-    l2=lines!(ax1,x,abs.(q),color=:black)
-    l3=lines!(ax1,x,-abs.(q),color=:black)
-    xlims!(ax1,(x[1],x[end]))
-    # this should not be needed
-    ylims!(ax1,(-1.0,1.0))
-    leg = fig[1,2] = Legend(fig, [l1,l2],["realpt", "abs"])
 
+    selectfig(gs, false)
+    clf()
+    showlog && subplot(2,1,1)
 
+    plot(x,abs.(q),color="black",label="abs")
+    plot(x,-abs.(q),color="black")
+    plot(x,real.(q),color=the_col,label="realpt")
+    legend()
+    xlim(x[1],x[end])
+        # DEVNOTE: upstream puts the_str in the plot area (often obscured)
+        #=
+        y0,y1 = ylim()
+        dx = x[end]-x[1]
+        dy = y1-y0
+        # upstream also has fontweight="bold", but that's hard w/ math mode
+        text(x[1]+dx/40,y0+dy/10,the_str,fontsize=12)
+        =#
+    title("$(modestr)mode: " *
+          "\$\\lambda=" * λ_str * "\$\n" * the_str)
     if showlog
-        # TODO: log ticks
-        ax2, l2b = lines(fig[2,1],x,log10.(abs.(q)),color=:black)
-        xlims!(ax2,x[1],x[end])
-        # this should not be needed
-        ylims!(ax2,(-10.0,0.0))
-        ax2.ylabel = "log₁₀(|xⱼ|)"
-        ax2.xlabel = "j"
-    else
-        ax1.xlabel = "j"
+        subplot(2,1,2)
+        semilogy(x,abs.(q),"k")
+        xlim(x[1],x[end])
     end
-    drawp(gs, fig, 2)
-    nothing
+    drawp(gs,gs.mainph,2)
 end
 
-function mtxpowersplot(gs::MakieGUIState,ps_data::PSAStruct,nmax=50;
-                       gradual=false, lbmethod=:none, lbdk=0.25)
+function mtxpowersplot(gs::MPLGUIState,ps_data::PSAStruct,nmax=50;gradual=false,
+                       lbmethod=:none,lbdk=0.25)
 
     stop_trans = false
 
@@ -346,42 +334,32 @@ function mtxpowersplot(gs::MakieGUIState,ps_data::PSAStruct,nmax=50;
     # spectral radius
     alp = maximum(abs.(ps_data.ps_dict[:ews]))
     newfig = true
-    pts,bnds = zeros(0),zeros(0)
 
     function doplot()
-        fig = Figure(resolution = (500, 500))
-        p1 = fig[1,1] = Axis(fig)
-        l1a = lines!(p1,the_pwr[1:pos],trans[1:pos],color=:blue) # dot-dash
-        l2a = lines!(p1,the_pwr[1:pos],alp.^the_pwr[1:pos],color=:black, linestyle=:dash)
-        xlims!(p1,(ax[1],ax[2]))
-        ylims!(p1,(ax[3],ax[4]))
-        p1.ylabel = "∥Aᵏ∥"
-        p1.xlabel = "k"
-        p2, l1b = lines(fig[2,1], the_pwr[1:pos], log10.(trans[1:pos]), color=:blue)
-        xlims!(p2,(ax2[1],ax2[2]))
-        ylims!(p2,(log10(ax2[3]),log10(ax2[4])))
-        p2.ylabel = "log₁₀"
-        # TODO: log ticks
-
-        # spectral growth
-        l2b = lines!(p2,the_pwr[1:pos],log10.(alp.^the_pwr[1:pos]), color=:black, linestyle=:dash)
-
-        if isempty(bnds)
-            leg = fig[3,1] = Legend(fig, [l1b,l2b],["norms", "spectral"])
-        else
-            l3b = lines!(p2,pts,bnds, linestyle=:dashdot, color=:green)
-            leg = fig[3,1] = Legend(fig, [l1b,l2b,l3b],["norms", "spectral", "bound"])
+        # if plotting gradually, control axis limits to avoid jumpiness
+        if newfig
+            selectfig(gs,false)
+            newfig = false
         end
-        leg.tellheight = true
-        leg.orientation = :horizontal
-        # yspan = log10(ax2[4]) - log10(ax2[3])
-        # step = max(1,floor(yspan/3))
-        #    plot!(yticks = log10(ax2[3]):step:floor(log10(ax2[4])))
-        drawp(gs,fig,2)
-    end
-    if lbmethod != :none
-        pts,bnds,sel_pt = transient_bestlb(ps_data,:powers,0:nmax,
-                                           method=lbmethod, dk=lbdk)
+            subplot(2,1,1)
+            gradual && cla()
+            plot(the_pwr[1:pos],trans[1:pos])
+            plot(the_pwr[1:pos],alp.^the_pwr[1:pos],"g--")
+            ylabel("\$\\|A^k\\|\$")
+            if gradual
+                xlim(ax[1],ax[2])
+                ylim(ax[3],ax[4])
+            end
+            subplot(2,1,2)
+            gradual && cla()
+            semilogy(the_pwr[1:pos],trans[1:pos])
+            plot(the_pwr[1:pos],alp.^the_pwr[1:pos],"g--")
+            xlabel("k")
+            if gradual
+                xlim(ax[1],ax[2])
+                ylim(ax2[3],ax2[4])
+            end
+            drawp(gs,gs.mainph,2)
     end
     while !stop_trans
         mtx = A * mtx
@@ -423,9 +401,18 @@ function mtxpowersplot(gs::MakieGUIState,ps_data::PSAStruct,nmax=50;
         pos -= 1
         doplot()
     end
+    if lbmethod != :none
+        pts,bnds,sel_pt = transient_bestlb(ps_data,:powers,0:nmax,
+                                           method=lbmethod, dk=lbdk)
+
+        plot(pts,bnds,"m")
+        # upstream has something like
+        # figure(gs.mainfignum)
+        # scatter(sel_pt[:,1],sel_pt[:,2])
+    end
 end
 
-function mtxexpsplot(gs::MakieGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
+function mtxexpsplot(gs::MPLGUIState,ps_data::PSAStruct,dt=0.1,nmax=50;
                      gradual=false, lbmethod=:none)
 
     stop_trans = false
@@ -437,7 +424,7 @@ function mtxexpsplot(gs::MakieGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
 
     trans[1] = 1.0
     the_time[1] = 0.0
-    ax = [0,20*dt,0,2]
+    ax = [0.0,20.0*dt,0,2.0]
     ax2 = copy(ax)
     ax2[3] = 1e-2
     pos = 2
@@ -446,49 +433,44 @@ function mtxexpsplot(gs::MakieGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
     min_tp = Inf
     ax_factor = 3
 
-    # spectral abscissa
+    # get spectral abscissa
     alp = maximum(real.(ps_data.ps_dict[:ews]))
     newfig = true
+
     if lbmethod != :none
-        pts,bnds,sel_pt = transient_bestlb(ps_data,:exp,(0:nmax)*dt,
+        pts,bnds,sel_pt = transient_bestlb(ps_data,:exp,dt*(0:nmax),
                                            method=lbmethod)
     else
-        pts,bnds = zeros(0),zeros(0)
+        bnds = zeros(0)
     end
-
-
     function doplot()
-        fig = Figure(resolution = (500, 500))
-        p1 = fig[1,1] = Axis(fig)
-        l1a = lines!(p1,the_time[1:pos], trans[1:pos],color=:blue)
-        l2a = lines!(p1,the_time[1:pos], exp.(alp*the_time[1:pos]), color=:black,
-                     linestyle=:dash)
-        xlims!(p1,(ax[1],ax[2]))
-        ylims!(p1,(ax[3],ax[4]))
-        p1.ylabel = "∥exp(At)∥"
-        p1.xlabel = "t"
-
-        p2, l1b = lines(fig[2,1], the_time[1:pos], log10.(trans[1:pos]), color=:blue)
-        xlims!(p2,(ax2[1],ax2[2]))
-        ylims!(p2,(log10(ax2[3]),log10(ax2[4])))
-        p2.ylabel = "log₁₀"
-
-        # TODO: logarithmic ticks for y-axis
-        l2b = lines!(p2,the_time[1:pos],(1/log(10.0)) * (alp*the_time[1:pos]), color=:black,
-                     linestyle=:dash)
-        if isempty(bnds)
-            leg = fig[3,1] = Legend(fig, [l1b,l2b],["norms", "spectral"])
-        else
-            l3b = lines!(p2,pts[1:pos],log10.(bnds[1:pos]), color=:green, linestyle=:dashdot)
-            leg = fig[3,1] = Legend(fig, [l1b,l2b,l3b],["norms", "spectral", "bound"])
+        if newfig
+            selectfig(gs,false)
+            clf()
+            newfig = false
         end
-        leg.tellheight = true
-        leg.orientation = :horizontal
-
-        # yspan = log10(ax2[4]) - log10(ax2[3])
-        #    step = max(1,floor(yspan/3))
-        #    plot!(yticks = log10(ax2[3]):step:floor(log10(ax2[4])))
-        drawp(gs,fig,2)
+            subplot(2,1,1)
+            gradual && cla()
+            plot(the_time[1:pos],trans[1:pos])
+            plot(the_time[1:pos],exp.(alp*the_time[1:pos]),"g--")
+            if gradual
+                xlim(ax[1],ax[2])
+                ylim(ax[3],ax[4])
+            end
+            ylabel("\$\\|e^{At}\\|\$")
+            subplot(2,1,2)
+            gradual && cla()
+            semilogy(the_time[1:pos],trans[1:pos])
+            plot(the_time[1:pos],exp.(alp*the_time[1:pos]),"g--")
+            xlabel("t")
+            if !isempty(bnds)
+                plot(pts[1:pos],bnds[1:pos],"m")
+            end
+            if gradual
+                xlim(ax[1],ax[2])
+                ylim(ax2[3],ax2[4])
+            end
+        drawp(gs,gs.mainph,2)
     end
 
     while !stop_trans
@@ -529,7 +511,7 @@ function mtxexpsplot(gs::MakieGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
     end
 end
 
-function zoomin!(gs::MakieGUIState, ps_data::PSAStruct,
+function zoomin!(gs::MPLGUIState, ps_data::PSAStruct,
                  optsin=Dict{Symbol,Any}(); zkw=zeros(0))
     opts = fillopts(gs,optsin)
     if isempty(zkw)
@@ -538,6 +520,7 @@ function zoomin!(gs::MakieGUIState, ps_data::PSAStruct,
     else
         z = zkw
     end
+    figure(gs.mainfignum)
     ax = getxylims(gs.mainph)
     res = zoomin!(ps_data,z,ax)
     if res < 0
@@ -552,7 +535,7 @@ function zoomin!(gs::MakieGUIState, ps_data::PSAStruct,
     res
 end
 
-function zoomout!(gs::MakieGUIState, ps_data::PSAStruct,
+function zoomout!(gs::MPLGUIState, ps_data::PSAStruct,
                  optsin=Dict{Symbol,Any}(); include_fov=false, zkw=zeros(0))
     opts = fillopts(gs,optsin)
     if isempty(zkw)
@@ -560,6 +543,7 @@ function zoomout!(gs::MakieGUIState, ps_data::PSAStruct,
     else
         z = zkw
     end
+    figure(gs.mainfignum)
     ax = getxylims(gs.mainph); # current plot axes
     res = zoomout!(ps_data,z,ax,include_fov=include_fov)
     if res < 0
@@ -577,105 +561,79 @@ end
 ################################################################
 # Wrappers
 
-function _portrait(xs,ys,Z,eigA)
-    fig = Figure()
-    # ax1 = Axis(fig[1,1])
-    # c = contour!(ax1,xs,ys,log10.(Z'))
-    ax1, c = contour(fig[1,1],xs,ys,log10.(Z'))
-    cbar = Colorbar(fig[1,2], c)
-    # ax = getxylims()
-    # ms = MARKER_RATIO[] * (ax[2] - ax[1])
-    scatter!(ax1, real(eigA), imag(eigA), color=:black, # label="eigvals",
-             )
-             # markersize=ms)
-    # fig[1,1] = ax1
-    # fig[1,2] = cbar
-    fig
-end
-
 """
     psa(A [,opts]) -> ps_data, graphics_state
 
 Compute and plot pseudospectra of a matrix.
-
-This is a rudimentary command-line driver for the Pseudospectra package.
+This is a rudimentary driver for the Pseudospectra package.
 """
 function psa(A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol,Any}())
-    allopts = merge(default_opts,optsin)
+    allopts = merge(default_opts,opts)
     ps_data = new_matrix(A,allopts)
-        gs = MakieGUIState()
-
-    driver!(ps_data,allopts,gs)
+    fh = figure()
+    mainfignum = fh.number
+    gs = MPLGUIState(fh,mainfignum)
+    driver!(ps_data,allopts,gs=gs)
     ps_data, gs
 end
-#############################################################
+
+function _portrait(xs,ys,Z,eigA)
+    p = contour(xs,ys,log10.(Z),cmap="eigtool")
+    plot(real(eigA), imag(eigA), "k.", # label="eigvals",
+         markersize=5)
+    colorbar()
+    return p
+end
+################################################################
 # Utilities
 
 function setxylims!(ph,ax)
-    xlims!(ph,(ax[1],ax[2]))
-    ylims!(ph,(ax[3],ax[4]))
+    # FIXME: this should insure reference to ph
+    axis(ax)
 end
 
 function getxylims(ph)
-    if ph isa Scene
-        sl = scene_limits(ph)
-    else
-        ctx = content(ph[1,1])
-        sl = ctx.finallimits[]
-    end
-    if sl === nothing
-        return fill(0.0,4)
-    end
-    v0 = sl.origin
-    v1 = v0 + sl.widths
-    return [v0[1],v1[1],v0[2],v1[2]]
+    # FIXME: this should insure reference to ph
+    collect(axis())
 end
 
-# this is here because other backends allow picking with cursor
-function replzdlg(gs::MakieGUIState; what="a z-value")
+function replzdlg(gs::MPLGUIState; what="a z-value")
     x,y = NaN,NaN
-
-    println("Specify " * what *
-            "; enter real and imaginary components separated by whitespace")
-    print("z = ")
-    l = readline()
-    strs = split(l)
-    try
-        x = parse(Float64,strs[1])
-        y = parse(Float64,strs[2])
-    catch
-        println("unable to parse input")
-        x = NaN
-    end
+    println("click to select $what in main plot frame")
+    figure(gs.mainfignum) # in case the user looked elsewhere
+    x,y = ginput()[1]
     z = x + y*im
     return z
 end
 
-function addmark(gs::MakieGUIState,z,mykey)
+function addmark(gs::MPLGUIState,z,mykey)
     x,y = real(z),imag(z)
-    if mykey == :pseudo
-        mkey = :circle
-        ckey = :magenta
-    elseif mykey == :eigen
-        mkey = :circle
-        ckey = :cyan
-    else
-        mkey = :x
-        ckey = :black
+    figure(gs.mainfignum)
+    #=
+    l = gs.markerlist
+    # remove any existing mark of this sort
+    # WARNING: logic assumes zero or one mark per class
+    for i in eachindex(l)
+        if l[i][:class] == mykey
+            l[i][:handle][1][:remove]()
+            deleteat!(l,i)
+            break
+        end
     end
-    # FIXME: add marker to list (replacing if any)
-    # then trigger a redraw that handles everything
-    ctx = gs.mainph[1,1]
-    scatter!(ctx,[x],[y],color=ckey,marker=mkey,markersize=7)
-    drawp(gs,gs.mainph,1)
+    =#
+    if mykey == :pseudo
+        ltype = "mo"
+    elseif mykey == :eigen
+        ltype = "co"
+    else
+        ltype = "k*"
+    end
+    ph = plot([x],[y],ltype)
+    # push!(gs.markerlist,Dict(:class => mykey, :handle => ph))
     nothing
 end
 
-"""
-    The colormap from EigTool. This provides clearly
-    distinguishable colors for a line-contour plot.
-"""
-function etcgrad()
+function et_cmap()
     cm = [
         0   1.00000000000000   0.10000000000000
         0   0.92500000000000   0.17500000000000
@@ -743,26 +701,19 @@ function etcgrad()
         1.00000000000000   0.60000000000000                  0
     ]
     nc = size(cm,1)
-    cc = Vector{RGBA{Float64}}()
-    vv = zeros(nc)
-    for i in 1:nc
-        col = RGBA(RGB(cm[i,:]...))
-        push!(cc,col)
-        vv[i]=(i-1)/(nc-1)
-    end
-    if :ContinuousColorGradient in names(PlotUtils, all=true)
-        return PlotUtils.ContinuousColorGradient(cc,vv)
-    else
-        return PlotUtils.ColorGradient(cc,vv)
-    end
+    xvals = collect(range(0.0, stop=1.0, length=nc))
+    r = [(xvals[i],cm[i,1],cm[i,1]) for i in 1:nc]
+    g = [(xvals[i],cm[i,2],cm[i,2]) for i in 1:nc]
+    b = [(xvals[i],cm[i,3],cm[i,3]) for i in 1:nc]
+    PyPlot.ColorMap("eigtool",r,g,b,
+                    Array{Tuple{Float64,Float64,Float64}}(undef, 0),
+                    256,1.0)
 end
 
-const eigtool_cgrad = etcgrad()
-
-default_opts[:contourkw][:colormap] = eigtool_cgrad;
+PyPlot.register_cmap("eigtool",et_cmap())
 
 function __init__()
-    Pseudospectra._register_plotter(:Makie, MakieGUIState)
+    Pseudospectra._register_plotter(:PyPlot, MPLGUIState)
 end
 
 end # module
