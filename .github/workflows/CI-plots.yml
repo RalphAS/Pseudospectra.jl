@@ -21,6 +21,7 @@ jobs:
         version:
           - '1.6'
           - '1'
+          - 'nightly'
         os:
           - ubuntu-latest
           # - macOS-latest
@@ -28,12 +29,12 @@ jobs:
         arch:
           - x64
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         env:
           cache-name: cache-artifacts
         with:
@@ -45,18 +46,16 @@ jobs:
             ${{ runner.os }}-
       - name: Dev Pseudospectra
         run: |
-          julia --color=yes --project=./lib/PseudospectraPlots -e 'using Pkg; pkg"dev ."'
+          julia --color=yes --project=./ext/PseudospectraPlots/test -e 'using Pkg; pkg"dev ."'
         shell: bash
       - name: Dev test dependencies
         run: |
-          julia --color=yes --project=./lib/PseudospectraPlots/test -e 'using Pkg; pkg"dev . ./lib/PseudospectraPlots "'
+          julia --color=yes --project=./ext/PseudospectraPlots/test -e 'using Pkg; Pkg.instantiate()'
         shell: bash
       - uses: julia-actions/julia-buildpkg@latest
-        with:
-          project: './lib/PseudospectraPlots/'
       - name: Run tests
         run: |
-          julia --color=yes --depwarn=yes --project=./lib/PseudospectraPlots/test -e 'include("lib/PseudospectraPlots/test/runtests.jl")'
+          julia --color=yes --depwarn=yes --project=./ext/PseudospectraPlots/test -e 'include("ext/PseudospectraPlots/test/runtests.jl")'
         continue-on-error: ${{ matrix.version == 'nightly' }}
         shell: bash
       # - uses: julia-actions/julia-processcoverage@v1
