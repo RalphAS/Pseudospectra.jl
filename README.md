@@ -10,10 +10,6 @@ non-symmetric matrices, and plotting them along with eigenvalues
 ("spectral portraits"). Some related computations and plots are
 also provided.
 
-## IMPORTANT NOTICE
-**The package version in development (v0.3) has a modified interface,** using separate
-packages for plotting. This page describes the currently-registered (stable) version, v0.2.
-
 ## Mathematical background
 Whereas the spectrum of a matrix is the set of its eigenvalues,
 a pseudospectrum is the set of complex numbers "close" to the spectrum
@@ -64,29 +60,20 @@ available [here](https://RalphAS.github.io/Pseudospectra.jl/stable). See the
 examples and tests for more.
 
 
-## Note on packaging/requirements
-The plotting interface is somewhat schizophrenic. Drivers are included
-for Plots.jl and/or PyPlot.jl (i.e., PyPlot is a useful back end for
-Plots as used here; other Plots backends have been partially tested).
-Experimental support for Makie.jl is also available.
+# Installation
+This package is included in the General registry,
+so the normal `Pkg` commands to add `Pseudospectra` suffice.
 
+## Note on packaging/requirements
 Although this package is designed with an eye to plotting results,
 the computational routines are usable without a plotting package,
-To avoid forcing potential users to install a particular one, none are
-specified in the formal package requirements.  The `setgs` function
-can import one conditionally.
+
+Drivers are included for Plots.jl, Makie.jl, and PyPlot.jl. The drivers will be loaded
+automatically if the corresponding plotting package(s) is/are loaded (via Requires or as
+package extensions).
 
 Some functions used for examples require other packages. They should
 give a useful complaint if invoked without that support.
-
-# Installation
-This package should be included in the General registry by the time anyone else sees
-this paragraph, so the normal `Pkg` commands to add `Pseudospectra` should suffice.
-
-In the interim, install by adding this repository explicitly with the package manager.
-```julia
-Pkg.add("https://github.com/RalphAS/Pseudospectra.jl")
-```
 
 # Basic usage
 Minimal use of the REPL interface is as follows:
