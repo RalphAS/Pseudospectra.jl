@@ -10,4 +10,5 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Pseudospectra = "d6c5b33e-0240-5bd5-a771-a97ae748a961"
 
 [compat]
+Makie = "0.19.0 - 0.19.6"
 julia = "1.3"

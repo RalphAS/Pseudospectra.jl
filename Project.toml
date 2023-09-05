@@ -29,7 +29,7 @@ PlotUtils = "1.0"
 ProgressMeter = "1"
 Requires = "1"
 julia = "1.3"
-# Makie
+Makie = "0.19.0 - 0.19.6"
 PyPlot = "2"
 # Plots
 
