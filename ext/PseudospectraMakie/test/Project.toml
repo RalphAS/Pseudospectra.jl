@@ -13,8 +13,10 @@ ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Pseudospectra = "d6c5b33e-0240-5bd5-a771-a97ae748a961"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 
 [compat]
 Arpack = "0.3, 0.4, 0.5"
 ProgressMeter = "1"
+Makie = "0.19.0 - 0.19.6"
 julia = "1"
