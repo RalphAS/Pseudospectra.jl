@@ -12,7 +12,18 @@ end
 
 # more purely computational tests will go here...
 
-# it would be grand if this worked:
+# define the "tests" array:
+include("plot_tests.jl")
 
-# using CairoMakie
-# include("../ext/PseudospectraMakie/test/runtests.jl")
+using CairoMakie
+psplotter = :Makie
+@info("Plotting package is $psplotter")
+setpsplotter(psplotter)
+headless = isdefined(Main,:displayplots) ? !Main.displayplots : true
+gs = setgs(headless=headless, savefigs=headless, fig_id=1)
+
+for f in tests
+    println("Testing $f functionality")
+    fnam = f*".jl"
+    include(fnam)
+end

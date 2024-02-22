@@ -5,6 +5,7 @@ version = "0.3.0-DEV"
 [deps]
 Arpack = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ProgressMeter = "92933f4c-e287-5a05-a399-4b506db050ca"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
@@ -13,7 +14,6 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 [weakdeps]
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 
@@ -25,6 +25,7 @@ PseudospectraPyPlot = "PyPlot"
 [compat]
 Aqua = "0.8"
 Arpack = "0.3, 0.4, 0.5"
+CairoMakie = "0.10"
 GenericLinearAlgebra = "0.3"
 GenericSchur = "0.5"
 LinearAlgebra = "1"
@@ -43,13 +44,15 @@ julia = "1.6"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 GenericLinearAlgebra = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
 GenericSchur = "c145ed77-6b09-5dd9-b285-bf645a82121e"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
 PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Plots", "PyPlot", "LinearMaps", "GenericLinearAlgebra", "GenericSchur", "Aqua"]
+test = ["Test", "Plots", "PyPlot", "LinearMaps", "GenericLinearAlgebra", "GenericSchur", "Aqua", "CairoMakie"]

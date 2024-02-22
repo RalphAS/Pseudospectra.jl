@@ -23,6 +23,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 using LinearAlgebra, SparseArrays, Arpack, Printf
 
 using ProgressMeter
+using PlotUtils: PlotUtils
 
 export new_matrix, driver!, spectralportrait
 export psa_compute, psa_radius, psa_abscissa
