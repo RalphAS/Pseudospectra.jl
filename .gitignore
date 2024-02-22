@@ -7,3 +7,4 @@ examples/data/
 *.jl.*.cov
 *.jl.mem
 READMEnot.md
+Manifest.toml

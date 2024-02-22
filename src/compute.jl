@@ -166,7 +166,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         bigσ = 0.1*floatmax(real(eltype(Targ)))
 
         if proglog === nothing
-            progmeter = Progress(ly,1,"Computing pseudospectra...", 20)
+            progmeter = Progress(ly; dt=1, desc="Computing pseudospectra...", barlen=20)
         end
         # reverse order so first row is likely to have a complex gridpt
         # (better timing for LU)
@@ -191,7 +191,7 @@ function psa_compute(Targ, npts::Int, ax::Vector, eigA::Vector, opts::Dict, S=I;
         end
     else # matrix is dense
         if proglog === nothing
-            progmeter = Progress(ly,1,"Computing pseudospectra...", 20)
+            progmeter = Progress(ly; dt=1, desc="Computing pseudospectra...", barlen=20)
         end
         # Following Eigtool, we divide into batches and check for cancellation order
         # at bulk intervals.

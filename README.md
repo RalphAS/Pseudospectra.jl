@@ -48,8 +48,8 @@ The figure shows a section of the complex plane with eigenvalues and contours
 of `log10(ϵ)`.
 
 ## Package context
-Pseudospectra.jl (along with a QML-based GUI, in the forthcoming PseudospectraView
-package) is essentially a translation of the acclaimed MATLAB-based EigTool
+Pseudospectra.jl (along with associated graphical packages) is largely a translation of
+the acclaimed MATLAB-based EigTool
 ([homepage here](http://www.comlab.ox.ac.uk/pseudospectra/eigtool)),
 code now hosted [on GitHub](https://github.com/eigtool/eigtool).
 
@@ -57,33 +57,24 @@ No endorsement or promotion of Pseudospectra.jl by the authors of EigTool
 is implied.
 
 Specific documentation for Pseudospectra is a work in progress; a draft is
-available [here](https://RalphAS.github.io/Pseudospectra.jl/dev). See the
+available [here](https://RalphAS.github.io/Pseudospectra.jl/stable). See the
 examples and tests for more.
 
 
-## Note on packaging/requirements
-The plotting interface is somewhat schizophrenic. Drivers are included
-for Plots.jl and/or PyPlot.jl (i.e., PyPlot is a useful back end for
-Plots as used here; other Plots backends have been partially tested).
-Experimental support for Makie.jl is also available.
+# Installation
+This package is included in the General registry,
+so the normal `Pkg` commands to add `Pseudospectra` suffice.
 
+## Note on packaging/requirements
 Although this package is designed with an eye to plotting results,
 the computational routines are usable without a plotting package,
-To avoid forcing potential users to install a particular one, none are
-specified in the formal package requirements.  The `setgs` function
-can import one conditionally.
+
+Drivers are included for Plots.jl, Makie.jl, and PyPlot.jl. The drivers will be loaded
+automatically if the corresponding plotting package(s) is/are loaded (via Requires or as
+package extensions).
 
 Some functions used for examples require other packages. They should
 give a useful complaint if invoked without that support.
-
-# Installation
-This package should be included in the General registry by the time anyone else sees
-this paragraph, so the normal `Pkg` commands to add `Pseudospectra` should suffice.
-
-In the interim, install by adding this repository explicitly with the package manager.
-```julia
-Pkg.add("https://github.com/RalphAS/Pseudospectra.jl")
-```
 
 # Basic usage
 Minimal use of the REPL interface is as follows:

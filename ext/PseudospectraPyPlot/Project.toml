@@ -1,0 +1,13 @@
+name = "PseudospectraPyPlot"
+uuid = "71823e50-b940-4aaf-9126-862d4ca7e71f"
+version = "0.1.0"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Pseudospectra = "d6c5b33e-0240-5bd5-a771-a97ae748a961"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
+
+[compat]
+julia = "1.3"
