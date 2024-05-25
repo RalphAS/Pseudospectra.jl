@@ -38,11 +38,11 @@ using Pseudospectra: numrange!
 const default_opts = Dict{Symbol,Any}(
     :contourstyle => nothing, :markeig => true,
     :no_waitbar => false,
+    :figsizekw => Dict{Symbol, Any}(:size => (500, 500)), # CHECKME: is this wise?
     # No satisfactory colormap choices are built into Plots.
     # So we bit the bullet and implemented the one from EigTool
     # (which is really good); its spec is added below.
-    :contourkw => Dict{Symbol,Any}(:linewidth => 3,
-                                   :fill => false)
+    :contourkw => Dict{Symbol,Any}(:linewidth => 3)  # had :fill => false
 )
 
 struct MakiePlotter <: Pseudospectra.PSAPlotter end
@@ -117,8 +117,8 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
         error("should not get here w/ uncomputed zoom")
     end
     eigA = ps_dict[:proj_ews]
-    fig = Figure(resolution = (500, 500))
-    ax1 = Axis(fig)
+    fig = Figure(;opts[:figsizekw]...)
+    ax1 = Axis(fig[1,1])
     ctx = ax1
     gs.mainph = fig
 
@@ -129,7 +129,9 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
         clines = contour!(ctx,x,y,log10.(Z'); kwargs...)
         # gs.mainph = quantour(x,y,log10.(Z), levels; opts[:contourkw]...)
     end
-    cbar = Colorbar(fig, clines, label="log10(ϵ)", labelpadding=0)
+    # FIXME: Makie 0.21 claims the colormap is ambiguous if we pass clines
+    cbar = Colorbar(fig[1,2]; label="log10(ϵ)", labelpadding=0,
+                   colormap=clines.colormap[], limits=(levels[1],levels[end]))
         if !isempty(eigA)
             scatter!(ctx,real(eigA),imag(eigA),color=:black)
         end
@@ -152,8 +154,8 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
             end
         end
     setxylims!(ctx,zoom.ax)
-    fig[1,1] = ax1
-    fig[1,2] = cbar
+    # fig[1,1] = ax1
+    # fig[1,2] = cbar
     drawp(gs,gs.mainph,1)
     nothing
 end
@@ -254,7 +256,7 @@ function ewsplotter(gs::MakieGUIState, ews::Vector, zoom)
 
     fig = Figure()
     gs.mainph = fig
-    ax1 = fig[1,1] = Axis(fig)
+    ax1 = fig[1,1] = Axis(fig[1,1])
     scatter!(ax1, real(ews),imag(ews),color=:black)
     setxylims!(ax1,zoom.ax)
     drawp(gs,gs.mainph,1)
@@ -292,15 +294,15 @@ function plotmode(gs::MakieGUIState,z,A,U,pseudo::Bool,approx::Bool,verbosity)
     end
     λ_str = @sprintf("%12g%+12gi",real(z),imag(z))
     ax1_title = "$(modestr)mode: " * the_str * "\nλ=" * λ_str
-    fig = Figure(resolution = (500, 500))
-    ax1 = fig[1,1] = Axis(fig, title = ax1_title)
+    fig = Figure(size = (500, 500))
+    ax1 = Axis(fig[1,1], title = ax1_title)
     l1=lines!(ax1,x,real.(q),color=the_col)
     l2=lines!(ax1,x,abs.(q),color=:black)
     l3=lines!(ax1,x,-abs.(q),color=:black)
     xlims!(ax1,(x[1],x[end]))
     # this should not be needed
     ylims!(ax1,(-1.0,1.0))
-    leg = fig[1,2] = Legend(fig, [l1,l2],["realpt", "abs"])
+    leg = Legend(fig[1,2], [l1,l2],["realpt", "abs"])
 
 
     if showlog
@@ -347,8 +349,8 @@ function mtxpowersplot(gs::MakieGUIState,ps_data::PSAStruct,nmax=50;
     pts,bnds = zeros(0),zeros(0)
 
     function doplot()
-        fig = Figure(resolution = (500, 500))
-        p1 = fig[1,1] = Axis(fig)
+        fig = Figure(size = (500, 500))
+        p1 = Axis(fig[1,1])
         l1a = lines!(p1,the_pwr[1:pos],trans[1:pos],color=:blue) # dot-dash
         l2a = lines!(p1,the_pwr[1:pos],alp.^the_pwr[1:pos],color=:black, linestyle=:dash)
         xlims!(p1,(ax[1],ax[2]))
@@ -456,8 +458,8 @@ function mtxexpsplot(gs::MakieGUIState, ps_data::PSAStruct,dt=0.1,nmax=50;
 
 
     function doplot()
-        fig = Figure(resolution = (500, 500))
-        p1 = fig[1,1] = Axis(fig)
+        fig = Figure(size = (500, 500))
+        p1 = Axis(fig[1,1])
         l1a = lines!(p1,the_time[1:pos], trans[1:pos],color=:blue)
         l2a = lines!(p1,the_time[1:pos], exp.(alp*the_time[1:pos]), color=:black,
                      linestyle=:dash)
