@@ -5,46 +5,52 @@ on:
     branches:
       - master
     tags: '*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.plotter }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
     env:
       GKS_ENCODING: "utf8"
       GKSwstype: "100"
       JULIA_NUM_THREADS: "2"
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
-    runs-on: ${{ matrix.os }}
+      PSPLOTTER: ${{ matrix.plotter }}
     strategy:
       fail-fast: false
       matrix:
         version:
           - '1.6'
+          - 'lts'
           - '1'
         os:
           - ubuntu-latest
           # - macOS-latest
           # - windows-latest
-        arch:
-          - x64
+        plotter:
+          - 'PythonPlot'
+          - 'Makie'
+          - 'Plots'
+          - 'None'
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: actions/checkout@v5
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: actions/cache@v3
-        env:
-          cache-name: cache-artifacts
-        with:
-          path: ~/.julia/artifacts
-          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-test-${{ env.cache-name }}-
-            ${{ runner.os }}-test-
-            ${{ runner.os }}-
+      - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@latest
+      - name: Bump environment
+        run: julia -e "mv(\"./test/Project-${{ matrix.plotter }}.toml\",\"./test/Project.toml\", force=true)";
       - uses: julia-actions/julia-runtest@v1
-      # - uses: julia-actions/julia-processcoverage@v1
-      # - uses: codecov/codecov-action@v3
-      #   with:
-      #     files: lcov.info
+      - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: ./Pseudospectra/src, ./Pseudospectra/ext
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: false
