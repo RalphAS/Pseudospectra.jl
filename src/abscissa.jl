@@ -55,9 +55,17 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
 #  For large (esp. sparse) A, see Overton's psapsr code.
 
     if (plotfig > 0)
-        if (!isdefined(Main, :PyPlot) || !isdefined(:plot)
-            || !(plot === Main.PyPlot.plot))
-            @warn("plotting is only implemented for PyPlot")
+        ok = false
+        if isdefined(:plot)
+            if isdefined(Main, :PythonPlot) && (plot === Main.PythonPlot.plot)
+                ok = true
+            end
+            if isdefined(Main, :PyPlot) && (plot === Main.PyPlot.plot)
+                ok = true
+            end
+        end
+        if !ok
+            @warn("plotting is only implemented for Matplotlib wrapper(s)")
             plotfig = 0
         end
     end

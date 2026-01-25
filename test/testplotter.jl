@@ -1,7 +1,7 @@
 # Prepare for plotting in test environment
 
 # Default is to run offline tests, producing PNG files in temp. dir.,
-# with default plotting package (Plots w/pyplot backend).
+# with default plotting package (Plots w/default backend).
 
 # To test other packages/backends, set them up first and define `psplotter`;
 # e.g. do
@@ -19,9 +19,9 @@ else
     psplotter = Symbol(get(ENV,"PSPLOTTER","Plots"))
     if psplotter == :Plots
         using Plots
-#        pyplot() # seems most reliable for png output
-    elseif psplotter == :PyPlot
-        using PyPlot
+#        pythonplot() # seems most reliable for png output
+    elseif psplotter == :PythonPlot
+        using PythonPlot
     elseif psplotter == :Makie
         using CairoMakie
     else

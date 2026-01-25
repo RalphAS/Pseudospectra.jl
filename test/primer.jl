@@ -9,6 +9,6 @@ if Sys.isapple()
 end
 Pkg.add("Plots")
 using Plots
-pyplot()
+pythonplot()
 p=scatter(rand(10),rand(10))
 png(p,"/tmp/fubar.png")

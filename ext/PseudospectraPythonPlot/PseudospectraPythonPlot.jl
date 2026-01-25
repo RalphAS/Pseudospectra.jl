@@ -1,10 +1,10 @@
 #=
- PyPlot.jl (Matplotlib) drivers etc. for Pseudospectra.jl
+ PythonPlot.jl (Matplotlib) drivers etc. for Pseudospectra.jl
 
 This file is part of Pseudospectra.jl.
 
 Julia implementation
-Copyright (c) 2017,2023 Ralph A. Smith
+Copyright (c) 2017,2023,2026 Ralph A. Smith
 
 Portions derived from EigTool:
  Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
@@ -14,9 +14,13 @@ Portions derived from EigTool:
 SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
-module PseudospectraPyPlot
+module PseudospectraPythonPlot
 
-isdefined(Base, :get_extension) ? (using PyPlot) : (using ..PyPlot)
+isdefined(Base, :get_extension) ? (using PythonPlot) : (using ..PythonPlot)
+
+using PythonPlot: PythonCall
+const pyconvert = PythonCall.pyconvert
+
 using Pseudospectra, LinearAlgebra, Printf
 
 export MPLGUIState
@@ -225,7 +229,7 @@ function selectfig(gs::MPLGUIState,main::Bool)
         else
             fh = figure()
             gs.mainph = fh
-            gs.mainfignum = fh.number
+            gs.mainfignum = pyconvert(Int, fh.number)
         end
     else
         if gs.secondaryfignum > 0
@@ -233,7 +237,7 @@ function selectfig(gs::MPLGUIState,main::Bool)
         else
             fh = figure()
             gs.secondaryph = fh
-            gs.secondaryfignum = fh.number
+            gs.secondaryfignum = pyconvert(Int, fh.number)
         end
     end
 end
@@ -569,9 +573,9 @@ function psa(::MPLPlotter, A::AbstractMatrix, opts::Dict{Symbol,Any}=Dict{Symbol
     allopts = merge(default_opts,opts)
     ps_data = new_matrix(A,allopts)
     fh = figure()
-    mainfignum = fh.number
-    gs = MPLGUIState(fh,mainfignum)
-    driver!(ps_data,allopts,gs=gs)
+    mainfignum = pyconvert(Int, fh.number)
+    gs = MPLGUIState(fh, mainfignum)
+    driver!(ps_data, allopts, gs=gs)
     ps_data, gs
 end
 
@@ -592,7 +596,7 @@ end
 
 function getxylims(ph)
     # FIXME: this should insure reference to ph
-    collect(axis())
+    pyconvert(Vector, axis())
 end
 
 function replzdlg(gs::MPLGUIState; what="a z-value")
@@ -637,7 +641,7 @@ function make_cmap(cm, name)
     r = [(xvals[i],cm[i,1],cm[i,1]) for i in 1:nc]
     g = [(xvals[i],cm[i,2],cm[i,2]) for i in 1:nc]
     b = [(xvals[i],cm[i,3],cm[i,3]) for i in 1:nc]
-    return PyPlot.ColorMap(name,r,g,b,
+    return PythonPlot.ColorMap(name,r,g,b,
                     Array{Tuple{Float64,Float64,Float64}}(undef, 0),
                     256,1.0)
 end
@@ -711,14 +715,14 @@ function et_cmap(; register=true)
     ]
     pcm = make_cmap(cm, "eigtool")
     if register
-        PyPlot.matplotlib.colormaps.register(pcm)
+        PythonPlot.matplotlib.colormaps.register(pcm)
     end
     return pcm
 end
 
 
 function __init__()
-    Pseudospectra._register_plotter(:PyPlot, MPLGUIState, MPLPlotter())
+    Pseudospectra._register_plotter(:PythonPlot, MPLGUIState, MPLPlotter())
     et_cmap()
 end
 

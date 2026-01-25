@@ -69,7 +69,7 @@ so the normal `Pkg` commands to add `Pseudospectra` suffice.
 Although this package is designed with an eye to plotting results,
 the computational routines are usable without a plotting package,
 
-Drivers are included for Plots.jl, Makie.jl, and PyPlot.jl. The drivers will be loaded
+Drivers are included for Plots.jl, Makie.jl, and PythonPlot.jl. The drivers will be loaded
 automatically if the corresponding plotting package(s) is/are loaded (via Requires or as
 package extensions).
 

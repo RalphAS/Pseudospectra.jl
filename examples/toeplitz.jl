@@ -22,8 +22,8 @@ using Pseudospectra, ToeplitzMatrices, Polynomials, LinearAlgebra
 p = getpsplotter()
 if p == :undef
     error("plotter must be set first")
-elseif p == :PyPlot
-    using PyPlot
+elseif p == :PythonPlot
+    using PythonPlot
 else
     using Plots
 end
@@ -90,7 +90,7 @@ function runme(casename="limaçon",n=64,niter=100)
         pert .*= ϵ/pn
         A1 = A + pert
         ews = eigvals(A1)
-        if plotter == :PyPlot
+        if plotter == :PythonPlot
             plot(real(ews),imag(ews),"r.")
         else
             scatter!(real(ews),imag(ews),markersize=2,c=:red,leg=false,
@@ -100,7 +100,7 @@ function runme(casename="limaçon",n=64,niter=100)
     θv = range(0, stop=2π, length=201)
 
     symcurve = [symbolfunc(cis(θ)) for θ in θv]
-    if plotter == :PyPlot
+    if plotter == :PythonPlot
         plot(real(symcurve),imag(symcurve),"k")
         p = nothing
     else

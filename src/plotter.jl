@@ -10,7 +10,7 @@ export setpsplotter, getpsplotter, setgs, isheadless, defaultgs
 
 const _currentplotter = Ref{Symbol}(:undef)
 
-const _available_plotters = Symbol[:PyPlot, :Plots,
+const _available_plotters = Symbol[:PyPlot, :PythonPlot, :Plots,
                                    :Makie,
                                    ]
 const _enabled_plotters = Dict{Symbol, PSAPlotter}()
