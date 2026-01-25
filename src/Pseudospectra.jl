@@ -262,8 +262,8 @@ function new_matrix(A::AbstractMatrix,
             end
         elseif issparse(A) && convert2full
             (verbosity > 0) &&
-                println("converting to full for direct computation")
-            Atmp = full(ps_data.matrix)
+                println("converting to dense matrix for direct computation")
+            Atmp = Matrix(ps_data.matrix)
             try
                 F  = schur(Atmp+complex(eltype(Atmp))(0))
                 ps_dict[:schur_mtx] = F.T
