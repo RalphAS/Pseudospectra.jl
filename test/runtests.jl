@@ -1,6 +1,8 @@
 using Pseudospectra, Test, LinearAlgebra
 using Aqua
 
+include("testplotter.jl")
+
 Aqua.test_all(Pseudospectra)
 
 @testset "psa_compute" begin
@@ -12,15 +14,12 @@ end
 
 # more purely computational tests will go here...
 
+if psplotter == :None
+    exit()
+end
+
 # define the "tests" array:
 include("plot_tests.jl")
-
-using CairoMakie
-psplotter = :Makie
-@info("Plotting package is $psplotter")
-setpsplotter(psplotter)
-headless = isdefined(Main,:displayplots) ? !Main.displayplots : true
-gs = setgs(headless=headless, savefigs=headless, fig_id=1)
 
 for f in tests
     println("Testing $f functionality")
