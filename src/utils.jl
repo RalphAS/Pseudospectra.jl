@@ -195,19 +195,19 @@ Compute triangular factor(s) for a non-square matrix.
 
 As used to prepare for pseudospectra computation.
 """
-function rect_fact(A)
+function rect_fact(A::AbstractMatrix{Ty}) where {Ty}
     m,n = size(A)
     if m >= 2*n
         # QR form
-        F = qrfact(A[n+1:end,:])
-        S = vcat(A[1:n,:],F[:R])
+        F = qr(A[n+1:end,:])
+        S = vcat(A[1:n,:],F.R)
         T = I
     else
         # QZ form
-        tmp = eye(m,n)
-        F = schurfact(A[end-n+1:end,:],tmp[end-n+1:end,:])
-        S = vcat(A[1:m-n,:]*F[:Z],F[:S])
-        T = vcat(F[:Z][1:m-n,:],F[:T])
+        tmp = diagm(m,n,ones(Ty,min(m,n)))
+        F = schur(A[end-n+1:end,:],tmp[end-n+1:end,:])
+        S = vcat(A[1:m-n,:]*F.Z,F.S)
+        T = vcat(F.Z[1:m-n,:],F.T)
     end
     return S,T
 end

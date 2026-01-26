@@ -192,7 +192,7 @@ function new_matrix(A::AbstractMatrix,
         (verbosity > 1) && (m > 100) &&
             println("Attempting initial decomposition...")
         # If square, dense, & direct, we prefer a Schur factorization.
-        # Checking for schurfact! method should work,
+        # Checking for schur! method should work,
         # but that's just asking for surprises. This should be robust.
         try
             if eltype(A) <: Complex
