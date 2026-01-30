@@ -4,7 +4,7 @@
 This file is part of Pseudospectra.jl.
 
 Julia implementation
-Copyright (c) 2017,2023 Ralph A. Smith
+Copyright (c) 2017,2023,2026 Ralph A. Smith
 
 Portions derived from EigTool:
  Copyright (c) 2002-2014, The Chancellor, Masters and Scholars
@@ -23,7 +23,7 @@ export MPLGUIState
 
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
-import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
+import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless, selectfig
 import Pseudospectra: mtxexpsplot, mtxpowersplot
 import Pseudospectra: zoomin!, zoomout!, _portrait
 
