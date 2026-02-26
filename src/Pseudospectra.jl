@@ -41,7 +41,7 @@ export zoomin!, zoomout!
 # Associated plotting packages should provide these, specialized on their
 # own GUIState types:
 # redrawcontour, surfplot, arnoldiplotter!, ewsplotter, plotmode,
-# replzdlg, addmark
+# replzdlg, addmark, selectfig, getxylims
 
 const smallσ = 1e-150
 
@@ -65,6 +65,7 @@ function redrawcontour end
 function surfplot end
 function arnoldiplotter! end
 function _portrait end
+function getxylims end
 
 """
     ewsplotter(gs::GUIState, ews::Vector, zoom)
@@ -76,6 +77,13 @@ So we have something to look at while waiting for the compute engines.
 function ewsplotter end
 function plotmode end
 function replzdlg end
+
+"""
+    selectfig(gs::GUIState, mainfig::Bool)
+
+start a new figure, or attach to an existing one.
+"""
+function selectfig end
 
 function addmark end
 """
@@ -739,6 +747,5 @@ _basic_psa_opts(zoom,ps_dict) = Dict{Symbol,Any}(
 ################################################################
 # FIXME: until we think of a better way to handle this:
 include("../examples/demo_mtx.jl")
-
 
 end # module

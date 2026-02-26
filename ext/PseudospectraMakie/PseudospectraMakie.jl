@@ -27,7 +27,7 @@ export MakieGUIState
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
 import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
-import Pseudospectra: mtxexpsplot, mtxpowersplot
+import Pseudospectra: mtxexpsplot, mtxpowersplot, getxylims
 import Pseudospectra: zoomin!, zoomout!, _portrait
 
 # we use these internals here:

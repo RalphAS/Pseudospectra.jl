@@ -16,7 +16,8 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 module PseudospectraPythonPlot
 
-isdefined(Base, :get_extension) ? (using PythonPlot) : (using ..PythonPlot)
+using PythonPlot
+# isdefined(Base, :get_extension) ? (using PythonPlot) : (using ..PythonPlot)
 
 using PythonPlot: PythonCall
 const pyconvert = PythonCall.pyconvert
@@ -27,9 +28,9 @@ export MPLGUIState
 
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
-import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
-import Pseudospectra: mtxexpsplot, mtxpowersplot
-import Pseudospectra: zoomin!, zoomout!, _portrait
+import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless, selectfig
+import Pseudospectra: mtxexpsplot, mtxpowersplot, _radius_plot, _abscissa_plot
+import Pseudospectra: zoomin!, zoomout!, _portrait, FigObjWrapper
 
 # we use these internals here:
 using Pseudospectra: vec2ax, expandlevels, oneeigcond, psmode_inv_lanczos
@@ -217,11 +218,6 @@ function arnoldiplotter!(gs::MPLGUIState,old_ax,opts,dispvec,infostr,ews,shifts,
     return nothing
 end
 
-"""
-    selectfig(gs,main::Bool)
-
-start a new figure, or attach to an existing one.
-"""
 function selectfig(gs::MPLGUIState,main::Bool)
     if main
         if gs.mainfignum > 0
@@ -603,7 +599,8 @@ function replzdlg(gs::MPLGUIState; what="a z-value")
     x,y = NaN,NaN
     println("click to select $what in main plot frame")
     figure(gs.mainfignum) # in case the user looked elsewhere
-    x,y = ginput()[1]
+    pobj = ginput()
+    x,y = pyconvert(Tuple, pobj)[1]
     z = x + y*im
     return z
 end
@@ -720,6 +717,78 @@ function et_cmap(; register=true)
     return pcm
 end
 
+function FigObjWrapper(p::MPLPlotter, arg)
+    fh = figure(arg)
+    return FigObjWrapper{MPLPlotter, typeof(fh)}(p, fh)
+end
+
+function _radius_plot(fobj::FigObjWrapper{MPLPlotter}, cmd::Symbol, args...)
+    if cmd === :eigenvalues
+        eA = args[1]
+        figure(fobj.fighandle)
+        clf()
+        plot(real(eA), imag(eA), "k.")
+
+    elseif cmd === :radial_step
+        # plot radial line between old and new points
+        theta_j, rold, rnew_j, Aisreal = args
+        figure(fobj.fighandle)
+        plot(rold * cos(theta_j), rold * sin(theta_j), "bx")
+        plot([rold * cos(theta_j), rnew_j * cos(theta_j)],
+             [rold * sin(theta_j), rnew_j * sin(theta_j)], "m-")
+        plot([rnew_j * cos(theta_j)], [rnew_j * sin(theta_j)], "b+")
+        if Aisreal
+            plot(rold * cos(theta_j), -rold * sin(theta_j), "bx")
+            plot([rold * cos(theta_j), rnew_j * cos(theta_j)],
+                 [-rold * sin(theta_j), -rnew_j * sin(theta_j)], "m-")
+            plot([rnew_j * cos(theta_j)], [-rnew_j * sin(theta_j)], "b+")
+        end
+
+    elseif cmd === :best_point
+        r_best, theta_best = args
+        figure(fobj.fighandle)
+        plot(r_best * cos(theta_best), r_best * sin(theta_best), "b*")
+
+    elseif cmd === :circle_intersections
+        r, theta = args
+        figure(fobj.fighandle)
+        plot(r * cos.(0:0.04:6.4), r * sin.(0:0.04:6.4))
+        pointsoncircle = r * (cos.(theta) .+ im * sin.(theta))
+        plot(real(pointsoncircle), imag(pointsoncircle), "ro")
+    end
+end
+
+function _abscissa_plot(fobj::FigObjWrapper{MPLPlotter}, cmd::Symbol, args...)
+    if cmd === :eigenvalues
+        eA = args[1]
+        figure(fobj.fighandle)
+        clf()
+        plot(real(eA), imag(eA), "k.")
+
+    elseif cmd === :real_step
+        # plot horizontal line between old and new points
+        y_j, xold, xnew_j, Aisreal = args
+        figure(fobj.fighandle)
+        plot([xold, xnew_j],y_j*ones(2),"m-") # horiz line
+        plot([xnew_j],[y_j],"b+") # right end point
+        if Aisreal
+            plot([xold,xnew_j], -y_j*ones(2),"m-")
+            plot([xnew_j],[-y_j],"b+")
+        end
+
+    elseif cmd === :best_point
+        x_best, y_best = args
+        figure(fobj.fighandle)
+        plot(x_best, y_best, "b*")
+
+    elseif cmd === :vline_intersections
+        x, y, ynew = args
+        figure(fobj.fighandle)
+        plot(x*ones(2),[maximum(y),minimum(y)],"r-") # vertical line
+        plot(x*ones(length(y)),y,"g+") # intersections
+        plot(x*ones(length(ynew)),ynew,"bx")
+    end
+end
 
 function __init__()
     Pseudospectra._register_plotter(:PythonPlot, MPLGUIState, MPLPlotter())

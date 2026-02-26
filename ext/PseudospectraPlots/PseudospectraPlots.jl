@@ -24,7 +24,7 @@ export PlotsGUIState
 # we implement specific methods for these here:
 import Pseudospectra: redrawcontour, surfplot, arnoldiplotter!, ewsplotter
 import Pseudospectra: plotmode, replzdlg, addmark, fillopts, isheadless
-import Pseudospectra: mtxexpsplot, mtxpowersplot
+import Pseudospectra: mtxexpsplot, mtxpowersplot, getxylims
 import Pseudospectra: zoomin!, zoomout!, _portrait
 
 # we use these internals here:
@@ -563,6 +563,8 @@ function getxylims(ph)
     ya=ylims(ph)
     return [xa[1],xa[2],ya[1],ya[2]]
 end
+
+getxylims(gs::PlotsGUIState, main::Bool) = getxylims(main ? gs.mainph : gs.ph2)
 
 # this is here because other backends allow picking with cursor
 function replzdlg(gs::PlotsGUIState; what="a z-value")
