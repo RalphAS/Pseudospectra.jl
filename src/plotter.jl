@@ -6,7 +6,7 @@ This file is part of Pseudospectra.jl.
 SPDX-License-Identifier: BSD-3-Clause
 License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
-export setpsplotter, getpsplotter, setgs, isheadless, defaultgs
+export defaultgs, getpsplotter, isheadless, setgs, setpsplotter
 
 const _currentplotter = Ref{Symbol}(:undef)
 
@@ -29,15 +29,17 @@ function getpsplotter()
         ks = keys(_enabled_plotters)
         nk = length(ks)
         if nk == 0
-            throw(ErrorException("No plotting interface is enabled.\nAn appropriate package (i.e. Plots, PyPlot, Makie) must be loaded."))
+            throw(ErrorException("No plotting interface is enabled.\n"
+                                 * "An appropriate package (i.e. Plots, PythonPlot,"
+                                 * "or Makie) must be loaded."))
         else
             # we can't index Dict keys, but we can iterate
             for k in ks
                 setpsplotter(k)
+                if nk > 1
+                    @info "Using $k as plotting package for Pseudospectra"
+                end
                 break
-            end
-            if nk > 1
-                @info "Using $(ks[1]) as plotting package for Pseudospectra"
             end
         end
     end
@@ -54,7 +56,9 @@ and may also be used to select one if several are loaded.
 """
 function setpsplotter(plotter::Symbol)
     if get(_enabled_plotters, plotter, nothing) === nothing
-        throw(ArgumentError("Selected plotter '$plotter' is not enabled;\nan appropriate package (i.e. Plots, PyPlot, Makie) must be loaded first."))
+        throw(ArgumentError("Selected plotter '$plotter' is not enabled;\n"
+                            * "an appropriate package (i.e. Plots, PythonPlot, or Makie)"
+                            * "must be loaded first."))
     end
     _currentplotter[]=plotter
     nothing
@@ -67,13 +71,13 @@ Construct a `GUIState` for subsequent use by Pseudospectra functions.
 
 Assumes plotting package has been chosen via `setpsplotter()`.
 """
-function setgs(; headless=false, savefigs=true, fig_id=0)
+function setgs(; drawcmd=nothing, headless=false, savefigs=true, fig_id=0, kwargs...)
     fn = get(_guistates, _currentplotter[], nothing)
     if fn === nothing
         throw(ErrorException("use `setpsplotter` to establish plotting "
                              * "package for Pseudospectra first"))
     end
-    gs = fn(nothing,fig_id,nothing; headless=headless, savefigs=savefigs)
+    gs = fn(nothing, fig_id, drawcmd; headless=headless, savefigs=savefigs, kwargs...)
     _currentgs[] = gs
     return gs
 end
@@ -85,7 +89,7 @@ package.  Attempts to initialize such an object if necessary.
 function defaultgs()
     if _currentgs[] === nothing
         if _currentplotter[] == :undef
-            setpsplotter()
+            getpsplotter()
         end
         _currentgs[] = setgs()
     end
