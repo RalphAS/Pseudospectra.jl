@@ -2,7 +2,7 @@
 This file is part of Pseudospectra.jl.
 
 Julia translation
-Copyright © 2017 Ralph Smith
+Copyright © 2017,2026 Ralph Smith
 
 Portions from original MATLAB code (via EigTool)
 Copyright © 2002-2014 James Burke, Adrian Lewis, Emre Mengi and Michael Overton
@@ -33,20 +33,20 @@ Optional arg:
 Keyword args:
 
 * `verbosity: 0 for quiet, 1 for noise
+* `fig_id`: if not `nothing`, make a figure with this ID to show graphical diagnostics
+* `iter_prompt::Bool=false`: whether to pause to examine progress between iterations
 """
 function psa_abscissa end
 
-#=
-Undocumented keyword args:
-* `plotfig`: if a +ve integer, a figure number to use for diagnostic plots (**uses PyPlot**)
-* `iterprompt`: whether to pause between steps; for plot visibility
-
-Plotting only works if PyPlot bindings are imported into this module, which we
-won't do by default.
-=#
+# implement this in suitable plotting extensions
+function _abscissa_plot(f::FigObjWrapper{P}, cmd::Symbol, args...) where {P}
+    if cmd == :eigenvalues
+        @warn "abscissa diagnostic plot is not available for $P"
+    end
+end
 
 
-function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
+function psa_abscissa(A, epsln, eA=[]; verbosity=0, fig_id=nothing, iter_prompt=false)
 # A = ps_data.input_matrix
 
 # This is the version from EigTool.
@@ -54,32 +54,18 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
 #  pages, or perhaps Mengi's) and moderate size dense A
 #  For large (esp. sparse) A, see Overton's psapsr code.
 
-    if (plotfig > 0)
-        ok = false
-        if isdefined(:plot)
-            if isdefined(Main, :PythonPlot) && (plot === Main.PythonPlot.plot)
-                ok = true
-            end
-            if isdefined(Main, :PyPlot) && (plot === Main.PyPlot.plot)
-                ok = true
-            end
-        end
-        if !ok
-            @warn("plotting is only implemented for Matplotlib wrapper(s)")
-            plotfig = 0
-        end
-    end
-
     n,m = size(A)
     (n==m) || throw(ArgumentError("matrix must be square"))
     (isa(epsln,Real) && (epsln >= 0)) || throw(ArgumentError("ϵ must be >= 0"))
 
-    isempty(eA) && (eA = eigvals(A))
+    isempty(eA) && (eA = complex.(eigvals(A)))
 
-    if plotfig > 0
-        figure(plotfig)
-        clf()
-        plot(real(eA),imag(eA),"k.")
+    if fig_id !== nothing
+        plotter = getpsplotter()
+        fh = FigObjWrapper(plotter, fig_id)
+        _abscissa_plot(fh, :eigenvalues, eA)
+    else
+        fh = nothing
     end
 
     smalltol = 1e-10 * max(norm(A),epsln)
@@ -101,29 +87,29 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
         y = imag(eA[ind])
         (verbosity > 0) && @printf("\npsa_abscissa: x=%22.15f   ",x)
         iter = 0
-        no_imageig = false
+        no_imag_eig = false
         ybest = NaN
         E = Matrix(epsln * I, size(A)...)
         Areal = (eltype(A) <: Real)
-        imagtol = smalltol # used to detect zero real parts
+        imag_tol = smalltol # used to detect zero real parts
 
-        while !no_imageig && (x > xold)
+        while !no_imag_eig && (x > xold)
             iter += 1
             (iter > 20) && error("psa_abscissa: too many steps")
             yold = y
-            # given current x, look for all relevant interseections of vertical
+            # given current x, look for all relevant intersections of vertical
             # line w/ pseudospectrum, process and return pair midpoints.
             # note scalar x, scalar ybest, vector y
-            # (updates imagtol)
-            y,newitol = pspa_2way_imag(A,E,epsln,x,ybest,iter,imagtol,plotfig,verbosity)
-            imagtol = newitol
+            # (updates imag_tol)
+            y,newitol = pspa_2way_imag(A, E, epsln, x, ybest, iter, imag_tol, fh, verbosity)
+            imag_tol = newitol
             ptout = "Computing Pseudospectral Abscissa..(iteration $iter)"
-            if iterprompt
-                print(" [RET]")
+            if iter_prompt
+                print(" [type return to continue]")
                 readline()
             end
-            no_imageig = isempty(y)
-            if !no_imageig
+            no_imag_eig = isempty(y)
+            if !no_imag_eig
                 (verbosity > 0) && print("psa_abscissa: y = $y  ")
 
                 # given resulting y values, look for rightmost intersection of
@@ -132,7 +118,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
 
                 xold = x
                 ybestt = ybest
-                x,ybest = pspa_2way_real(A,E,y,imagtol,plotfig,xold)
+                x,ybest = pspa_2way_real(A, E, y, imag_tol, fh, xold)
                 if verbosity > 0
                     println()
                     print("psa_abscissa: x = $x   ")
@@ -145,7 +131,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
                         print("psa_abscissa: could not find bigger x")
                     end
                 end # if x < xold
-            end # if !no_imageig
+            end # if !no_imag_eig
         end # while
 
         if isempty(ybest)
@@ -163,7 +149,7 @@ function psa_abscissa(A,epsln,eA=[];verbosity=0,plotfig=0,iterprompt=false)
     end
 end
 
-function pspa_2way_real(A,E,y,imagtol,plotfig,xold)
+function pspa_2way_real(A, E, y, imag_tol, fh, xold)
 
     n = size(A,1)
     Aisreal = (eltype(A) <: Real)
@@ -172,30 +158,23 @@ function pspa_2way_real(A,E,y,imagtol,plotfig,xold)
         B2 = A - y[j]*im*I
         M2 = vcat(hcat(1im*B2',E),hcat(-E,1im*B2))
         eM2 = eigvals(M2)
-        println("test ",minimum(abs.(real.(eM2)))," $imagtol")
-        if minimum(abs.(real.(eM2))) <= imagtol # check for real eigenvalue
-            xnew[j] = maximum([imag(ew) for ew in eM2 if (abs(real(ew)) < imagtol)]
+        println("test ",minimum(abs.(real.(eM2)))," $imag_tol")
+        if minimum(abs.(real.(eM2))) <= imag_tol # check for real eigenvalue
+            xnew[j] = maximum([imag(ew) for ew in eM2 if (abs(real(ew)) < imag_tol)]
                               )
         else
             xnew[j] = -Inf
             error("horizontal search failed: no intersection points found for one of the midpoints")
             # TODO: fall back to alternate version
         end
-        if plotfig > 0
-            figure(plotfig)
-            hold(true)
-            plot([xold, xnew[j]],y[j]*ones(2),"m-") # horiz line
-            plot([xnew[j]],[y[j]],"b+") # right end point
-            if Aisreal
-                plot([xold,xnew[j]], -y[j]*ones(2),"m-")
-                plot([xnew[j]],[-y[j]],"b+")
-            end
+        if fh !== nothing
+            _abscissa_plot(fh, :real_step, y[j], xold, xnew[j], Aisreal)
         end
     end
     xbest, ind = findmax(xnew) # furthest to right
     ybest = y[ind]
-    if plotfig > 0
-        plot(xbest,ybest,"b*")
+    if fh !== nothing
+        _abscissa_plot(fh, :best_point, xbest, ybest, "b*")
     end
     return xbest, ybest
 end
@@ -213,11 +192,9 @@ end
  this, the process could terminate to a local minimizer of the
  pseudospectrum instead of a global maximizer (consider minus
  the 5,5 Demmel matrix with `ϵ = 0.01`).
- Finally, return the pair midpoints; there must be at least one.
-
- Updates `imagtol`
+ Finally, return the pair midpoints (there must be at least one) and updated `imag_tol`.
 """
-function pspa_2way_imag(A,E,epsln,x,ywant,iter,imagtol,plotfig,verbosity)
+function pspa_2way_imag(A, E, epsln, x, ywant, iter, imag_tol, fh, verbosity)
     svd_check = true
     Areal = (eltype(A) <: Real)
     n = size(A,1)
@@ -227,14 +204,14 @@ function pspa_2way_imag(A,E,epsln,x,ywant,iter,imagtol,plotfig,verbosity)
     M = vcat(hcat(-B',E),hcat(-E, B))
     eM = eigvals(M)
     minreal = minimum(abs.(real.(eM)))
-    if (iter == 1) && (minreal > imagtol)
-        imagtol += minreal
+    if (iter == 1) && (minreal > imag_tol)
+        imag_tol += minreal
     end
 
-    newimagtol = imagtol
+    newimag_tol = imag_tol
     ynew = zeros(0)
-    if minreal <= imagtol # check if M has an imaginary eigenvalue
-        y = sort(imag.([ew for ew in eM if abs(real(ew)) <= imagtol]))
+    if minreal <= imag_tol # check if M has an imaginary eigenvalue
+        y = sort(imag.([ew for ew in eM if abs(real(ew)) <= imag_tol]))
         ny = length(y)
         if svd_check
             indx2 = [1] # check out non-extreme imaginary parts
@@ -283,16 +260,13 @@ function pspa_2way_imag(A,E,epsln,x,ywant,iter,imagtol,plotfig,verbosity)
                 push!(ynew,(ylow+yhigh)/2)
             end
         end
-        if plotfig > 0
-            figure(plotfig)
-            plot(x*ones(2),[maximum(y),minimum(y)],"r-") # vertical line
-            plot(x*ones(length(y)),y,"g+") # intersections
-            plot(x*ones(length(ynew)),ynew,"bx")
+        if fh !== nothing
+            _abscissa_plot(fh, :vline_intersections, x, y, ynew)
         end
 
         if Areal
             ynew = [yy for yy in ynew if yy >= 0]
         end
     end
-    return ynew, imagtol
+    return ynew, imag_tol
 end

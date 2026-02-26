@@ -2,7 +2,7 @@
 This file is part of Pseudospectra.jl.
 
 Julia translation
-copyright 2017 Ralph Smith
+copyright 2017,2026 Ralph Smith
 
 Portions from original MATLAB code (via EigTool)
 Copyright © 2002-2014 Michael Overton and Emre Mengi
@@ -32,53 +32,39 @@ Optional arg:
 
 Keyword args:
 
-* `verbosity: 0 for quiet, 1 for noise
+* `verbosity=0`: 0 for quiet, 1 for noise
+* `fig_id=nothing`: if not `nothing`, make a figure with this ID to show graphical diagnostics
+* `iter_prompt::Bool=false`: whether to pause to examine progress between iterations
 """
 function psa_radius end
 
-#=
-Undocumented keyword args:
-* `plotfig`: if a +ve integer, a figure number to use for diagnostic plots (**uses PyPlot**)
-* `iterprompt`: whether to pause between steps; for plot visibility
+# implement this in suitable plotting extensions
+function _radius_plot(f::FigObjWrapper{P}, cmd::Symbol, args...) where {P}
+    if cmd == :eigenvalues
+        @warn "radius diagnostic plot is not available for $P"
+    end
+end
 
-Plotting only works if PyPlot bindings are imported into this module, which we
-won't do by default.
-=#
-
-function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
-                   verbosity=0,plotfig=0,iterprompt=false)
+function psa_radius(A, epsln, eA=zeros(complex(eltype(A)), 0);
+                   verbosity=0, fig_id=nothing, iter_prompt=false)
 
 # This is the version from EigTool.
 #  It is suited to epsilon not too small (otherwise see Overton's web
 #  pages, or perhaps Mengi's) and moderate size dense A
 #  For large (esp. sparse) A, see Overton's psapsr code
 
-    if (plotfig > 0)
-        ok = false
-        if isdefined(:plot)
-            if isdefined(Main, :PythonPlot) && (plot === Main.PythonPlot.plot)
-                ok = true
-            end
-            if isdefined(Main, :PyPlot) && (plot === Main.PyPlot.plot)
-                ok = true
-            end
-        end
-        if !ok
-            @warn("plotting is only implemented for Matplotlib wrapper(s)")
-            plotfig = 0
-        end
-    end
-
     n,m = size(A)
     (n==m) || throw(ArgumentError("matrix must be square"))
     (isa(epsln,Real) && (epsln >= 0)) || throw(ArgumentError("ϵ must be >= 0"))
 
-    isempty(eA) && (eA = eigvals(A))
+    isempty(eA) && (eA = complex.(eigvals(A)))
 
-    if plotfig > 0
-        figure(plotfig)
-        clf()
-        plot(real(eA),imag(eA),"k.")
+    if fig_id !== nothing
+        plotter = getpsplotter()
+        fh = FigObjWrapper(plotter, fig_id)
+        _radius_plot(fh, :eigenvalues, eA)
+    else
+        fh = nothing
     end
 
     smalltol = 1e-10 * max(norm(A),epsln)
@@ -101,14 +87,14 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
         (length(theta) == 1) && (theta = [theta...])
         thetaold = theta
         iter = 0
-        no_imageig = false
-        thetabest = NaN
+        no_imag_eig = false
+        theta_best = NaN
         mE = Matrix(epsln * I, size(A)...)
         Areal = (eltype(A) <: Real)
         realtol = smalltol # used to detect zero real parts
         radtol = smalltol # determines how far ew magnitudes can be from unity
 
-        while !no_imageig && (r > rold)
+        while !no_imag_eig && (r > rold)
             if verbosity > 0
                 @printf("\npsa_radius: r=%22.15f   ",r)
                 @printf("\npsa_radius: theta=")
@@ -116,40 +102,39 @@ function psa_radius(A,epsln,eA=zeros(complex(eltype(A)),0);
             end
             iter += 1
             (iter > 20) && error("psa_radius: too many steps")
-            thetabestt = thetabest
+            theta_bestt = theta_best
             rold = r
             # given the resulting directions in theta (computed in previous
             # iteration except when iter=1), look for the circle with the
             # greatest radius intersecting pseudo-spectrum boundary.
             # Note: input theta is a vector, but r is scalar
-            r,thetabest = pspr_2way_rad(A,mE,theta,realtol,iter,rold,plotfig,verbosity)
-            ptout = "Computing Pseudospectral Radius..(iteration $iter)"
+            r,theta_best = pspr_2way_rad(A,mE,theta,realtol,iter,rold,fh,verbosity)
             if r > rold
                 # given current r, look for all relevant intersections of the
                 # circle with radius r and the pseudospectrum, process and
                 # return pair midpoints
                 thetaold = theta
-                theta = pspr_2way_theta(A,mE,epsln,r,thetabest,iter,radtol,
-                                        smalltol, plotfig,verbosity)
-                if iterprompt
-                    print(" [RET]")
+                theta = pspr_2way_theta(A,mE,epsln,r,theta_best,iter,radtol,
+                                        smalltol, fh, verbosity)
+                if iter_prompt
+                    print(" [type return to continue]")
                     readline()
                 end
                 no_thetaeig = isempty(theta)
                 no_thetaeig && (rold = r)
             else
-                thetabest = thetabestt
+                theta_best = theta_bestt
                 r = rold
             end
         end # while
 
-        if isempty(thetabest)
+        if isempty(theta_best)
             # TODO: fall back to Hamiltonian scheme
             error("Failed in first iteration")
         end
 
         f = r
-        z = [r * (cos(thetabest) + 1im*sin(thetabest))]
+        z = [r * (cos(theta_best) + 1im*sin(theta_best))]
         if Areal && !isreal(z[1])
             z = [z[1],conj(z[1])]
         end
@@ -163,18 +148,18 @@ on the pseudospectrum boundary with the largest radius, i.e.
 
   `rnew[j] = max |z| s.t. `σ_min(A - z I) = epsln and angle(z) = theta[j]`
 
-`rbest` is the maximum of the largest radius in any direction
+`r_best` is the maximum of the largest radius in any direction
 
-          `rbest = max rnew[j], 1<=j<=length(theta)`
+          `r_best = max rnew[j], 1<=j<=length(theta)`
 
-`thetabest` is the angle of a point on the boudary with radius `rbest` in one of
+`theta_best` is the angle of a point on the boudary with radius `r_best` in one of
 the directions in `theta`, i.e. let
 
- `rbest = rnew[k]`, for some k, 1<=k<=length(theta),`
+ `r_best = rnew[k]`, for some k, 1<=k<=length(theta),`
 
-then `thetabest = theta[k]`.
+then `theta_best = theta[k]`.
 """
-function pspr_2way_rad(A,mE,theta,realtol,iter,rold,plotfig,verbosity)
+function pspr_2way_rad(A,mE,theta,realtol,iter,rold,fh,verbosity)
 
     n = size(A,1)
     Aisreal = (eltype(A) <: Real)
@@ -185,20 +170,8 @@ function pspr_2way_rad(A,mE,theta,realtol,iter,rold,plotfig,verbosity)
 
         if minimum(abs.(real.(eK))) <= realtol # check for real eigenvalue
             rnew[j] = maximum([imag(ew) for ew in eK if (abs(real(ew)) < realtol)])
-            if plotfig > 0
-                figure(plotfig)
-                # plot radial line between old and new points
-                hold(true)
-                plot(rold*cos(theta[j]), rold*sin(theta[j]),"bx")
-                plot([rold*cos(theta[j]), rnew[j]*cos(theta[j])],
-                     [rold*sin(theta[j]), rnew[j]*sin(theta[j])],"m-")
-                plot([rnew*cos(theta[j])], [rnew[j]*sin(theta[j])],"b+")
-                if Aisreal
-                    plot(rold*cos(theta[j]), -rold*sin(theta[j]),"bx")
-                    plot([rold*cos(theta[j]), rnew[j]*cos(theta[j])],
-                         [-rold*sin(theta[j]), -rnew[j]*sin(theta[j])],"m-")
-                    plot([rnew*cos(theta[j])], [-rnew[j]*sin(theta[j])],"b+")
-                end
+            if fh !== nothing
+                _radius_plot(fh, :radial_step, theta[j], rold, rnew[j], Aisreal)
             end
         else
             # there may be no point on the boundary in this direction
@@ -210,12 +183,12 @@ function pspr_2way_rad(A,mE,theta,realtol,iter,rold,plotfig,verbosity)
         error("horizontal search failed: no intersection points found for one of the midpoints")
         # TODO: fall back to alternate version
     end
-    rbest, ind = findmax(rnew) # outermost
-    thetabest = theta[ind]
-    if plotfig > 0
-        plot(rbest*cos(thetabest),rbest*sin(thetabest),"b*")
+    r_best, ind = findmax(rnew) # outermost
+    theta_best = theta[ind]
+    if fh !== nothing
+        _radius_plot(fh, :best_point, r_best, theta_best)
     end
-    return rbest, thetabest
+    return r_best, theta_best
 end
 
 """
@@ -241,7 +214,7 @@ angles of the midpoints.
 
 """
 function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
-                         plotfig,verbosity)
+                         fh,verbosity)
     svd_check = true
     Areal = (eltype(A) <: Real)
     n = size(A,1)
@@ -310,8 +283,6 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
 	        thetawantt = thetawant
 	    end
 
-
-
             if (thetawantt > thetalow + inttol) && (thetawantt < thetahigh - inttol)
                 # lower midpoint
 	        thetamid = (thetalow + thetawantt)/2
@@ -360,12 +331,9 @@ function pspr_2way_theta(A,mE,epsln,r,thetawant,iter,radtol,smalltol,
             end
         end
 
-        if plotfig > 0
-            figure(plotfig)
-            plot(r*cos(0:0.04:6.4),r*sin(0:0.04:6.4))
+        if fh !== nothing
             # plot intersection points of circle (radius r) and pseudospectrum
-            pointsoncircle = r * (cos.(theta) + im*sin.(theta))
-            plot(real(pointsoncircle),imag(pointsoncircle),"ro")
+            _radius_plot(fh, :circle_intersections, r, theta)
         end
 
         # DEVNOTE: upstream has this logic but doesn't use ynew

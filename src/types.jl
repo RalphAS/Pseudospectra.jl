@@ -9,7 +9,7 @@ License-Filename: LICENSES/BSD-3-Clause_Eigtool
 =#
 
 """
-object to hold state for the GUI used by Pseudospectra
+abstraction of object to hold state for the GUI used by Pseudospectra
 """
 abstract type GUIState end
 
@@ -43,7 +43,18 @@ mutable struct LevelDesc
     end
 end
 
+"""
+abstraction: subtypes represent plotting backends available for Pseudospectra
+"""
 abstract type PSAPlotter end
+
+"""
+encapsulation of a figure pane to be used by some Pseudospectra functions
+"""
+struct FigObjWrapper{P,T}
+    plotter::P
+    fighandle::T
+end
 
 """
     Portrait
@@ -66,9 +77,7 @@ mutable struct Portrait
     scale_equal::Bool
 end
 
-import Base: show
-
-function show(io::IO,z::Portrait)
+function Base.show(io::IO, z::Portrait)
     k = isempty(z.Z) ? "missing" : "present"
     print(io,"npts: $(z.npts), ax: $(z.ax), autolev: $(z.autolev), "
           * "computed: $(z.computed), data $k, proj $(z.proj_lev), "
@@ -136,6 +145,18 @@ mutable struct PSAStruct
     function PSAStruct(m1,u1,m1i,u1i,dict)
         new(m1,u1,m1i,u1i,dict,Vector{Portrait}(),0)
     end
+end
+function Base.show(io::IO, pd::PSAStruct)
+    size_str(A) = isa(A, AbstractMatrix) ? " of size $(size(A))" : ""
+    nzoom = length(pd.zoom_list)
+    print(io, "Pseudospectra.PSAStruct containing:\n"
+              * "  matrix: $(typeof(pd.matrix))$(size_str(pd.matrix)),\n"
+              * "  unitary_mtx: $(typeof(pd.unitary_mtx))$(size_str(pd.unitary_mtx)),\n"
+              * "  input_matrix: $(typeof(pd.input_matrix))$(size_str(pd.input_matrix)),\n"
+              * "  zoom_list: $(nzoom) portrait"
+              * (nzoom > 1 ? "s; current: $(pd.zoom_pos)" : "") * ",\n"
+          * "  ps_dict: Dict{Symbol,Any} with auxiliary data"
+    )
 end
 #=
  A (probably incomplete) list of keys in ps_dict
