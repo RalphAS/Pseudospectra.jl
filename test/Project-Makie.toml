@@ -6,6 +6,7 @@ GenericSchur = "c145ed77-6b09-5dd9-b285-bf645a82121e"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
 PlotUtils = "995b91a9-d308-5afd-9ec6-746e21dbc043"
+Pseudospectra = "d6c5b33e-0240-5bd5-a771-a97ae748a961"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
