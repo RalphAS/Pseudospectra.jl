@@ -16,7 +16,7 @@ Pseudospectra = {path = "../../Pseudospectra.jl"}
 [compat]
 Aqua = "0.8"
 CairoMakie = "0.15"
-GenericLinearAlgebra = "0.3"
+GenericLinearAlgebra = "0.3,0.4"
 GenericSchur = "0.5"
 LinearAlgebra = "1"
 LinearMaps = "3"
