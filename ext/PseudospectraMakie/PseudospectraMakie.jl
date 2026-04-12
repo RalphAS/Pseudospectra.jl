@@ -106,6 +106,31 @@ end
 const MARKER_RATIO = Ref(0.03)
 
 ################################################################
+"""
+contourbar!(fig, clines, Z)
+draw something like a Colorbar, but for contour level lines.
+"""
+function contourbar!(fig, clines, Z)
+    # WARNING: using Makie internals
+    clv = clines.computed_levels
+    if length(clv[]) == 0
+        clv = clines.zlevels
+        clc = clines.level_colors
+    else
+        clc = clines.computed_lbl_colors
+    end
+    ax2 = Axis(fig[1,2]; yaxisposition = :right, ygridvisible = false,
+               ylabel="log₁₀(ϵ)" )
+    # 12 is the default Colorbar size
+    colsize!(fig.layout, 2, Fixed(12))
+    hidexdecorations!(ax2)
+    ytmp = collect(range(start=minimum(Z), stop=maximum(Z), length=201))
+    ztmp = vcat(ytmp',ytmp')
+    @show extrema(ztmp)
+    c = contour!(ax2, [0.0,1.0], ytmp, ztmp; levels=clv, color=clc, linewidth=3.0)
+    return c
+end
+
 # The main plotting functions
 
 function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
@@ -121,18 +146,21 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
     ax1 = Axis(fig[1,1])
     ctx = ax1
     gs.mainph = fig
+    lgZ = log10.(Z')
 
     if isempty(levels)
-        clines = contour!(ctx,x,y,log10.(Z');opts[:contourkw]...)
+        clines = contour!(ctx,x,y,lgZ;opts[:contourkw]...)
     else
         kwargs = merge(Dict(:levels => levels),opts[:contourkw])
-        clines = contour!(ctx,x,y,log10.(Z'); kwargs...)
-        # gs.mainph = quantour(x,y,log10.(Z), levels; opts[:contourkw]...)
+        clines = contour!(ctx,x,y,lgZ; kwargs...)
+        # gs.mainph = quantour(x,y,lgZ, levels; opts[:contourkw]...)
     end
-    # FIXME: Makie 0.21 claims the colormap is ambiguous if we pass clines
-    cbar = Colorbar(fig[1,2]; label="log10(ϵ)", labelpadding=0,
-                   colormap=clines.colormap[], limits=(levels[1],levels[end]))
-        if !isempty(eigA)
+    # Note: Makie 0.21+ claims the colormap is ambiguous if we simply pass clines
+    #cbar = Colorbar(fig[1,2]; label="log10(ϵ)", labelpadding=0,
+    #              colormap=clines.colormap[], limits=(levels[1],levels[end]))
+    contourbar!(fig, clines, lgZ)
+
+    if !isempty(eigA)
             scatter!(ctx,real(eigA),imag(eigA),color=:black)
         end
         if get(opts,:showimagax,false)
@@ -579,10 +607,24 @@ end
 
 function _portrait(::MakiePlotter,xs,ys,Z,eigA)
     fig = Figure()
+    # FIXME: want better level selection than the default
+
+    # FIXME: this should work but currently makes Colorbar unworkable
+    #        and inline text labels are unreadable.
     # ax1 = Axis(fig[1,1])
-    # c = contour!(ax1,xs,ys,log10.(Z'))
-    ax1, c = contourf(fig[1,1],xs,ys,log10.(Z'))
-    cbar = Colorbar(fig[1,2], c)
+    # c = contour!(ax1,xs,ys,log10.(Z'); labels = true)
+    # cbar = Colorbar(fig[1,2], c.colormap[])
+
+    # uglier  workaround
+    # ax1, c = contourf(fig[1,1],xs,ys,log10.(Z'))
+    # cbar = Colorbar(fig[1,2], c)
+
+    # new attempt
+    ax1 = Axis(fig[1,1])
+    lgZ = log10.(Z')
+    c = contour!(ax1,xs,ys,lgZ)
+    contourbar!(fig, c, lgZ)
+
     # ax = getxylims()
     # ms = MARKER_RATIO[] * (ax[2] - ax[1])
     scatter!(ax1, real(eigA), imag(eigA), color=:black, # label="eigvals",
