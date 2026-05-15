@@ -45,7 +45,10 @@ else
     elseif psplotter == :PyPlot
         using PyPlot
     elseif psplotter == :Makie
-        using CairoMakie
+        # allow us to do local tests w/ GLMakie
+        if !isdefined(Main, :GLMakie)
+            using CairoMakie
+        end
     elseif psplotter != :None
         error("invalid ENV[\"PSPLOTTER\"];" *
               " expected Plots, PythonPlot, PyPlot, *Makie or None")

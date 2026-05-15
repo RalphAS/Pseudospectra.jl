@@ -8,7 +8,7 @@ or promotion by the authors of EigTool is implied.
 This package is released under a BSD license, as described in the LICENSE file.
 
 Julia code and supplements
-Copyright (c) 2017-2019, Ralph Smith
+Copyright (c) 2017-2026, Ralph Smith
 
 Portions derived from EigTool:
 

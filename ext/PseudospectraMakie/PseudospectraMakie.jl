@@ -48,24 +48,26 @@ const default_opts = Dict{Symbol,Any}(
 struct MakiePlotter <: Pseudospectra.PSAPlotter end
 
 mutable struct MakieGUIState <: GUIState
-    mainph # opaque backend object for main plot
-    mainfignum::Int
     drawcmd # function to display a plot object (pluggable for GUI use)
-    ph2 # opaque backend object for secondary plot
+    mainph # Makie.Figure or Makie.Scene object for main plot
+    mainscreen
+    ph2 # Makie.Figure object for secondary plot (may be used by GUI)
+    screen2
     markerlist
     counter
     is_headless::Bool
     do_savefig::Bool
     figfile
 
-    function MakieGUIState(ph=nothing,num=0,specialcmd=nothing;
+    # id is not used, but kept for compatibility
+    function MakieGUIState(ph=nothing, id=nothing, specialcmd=nothing;
                            headless=false, savefigs=true)
         if specialcmd === nothing
             dc = headless ? dcheadless : dcinteractive
         else
             dc = specialcmd
         end
-        new(ph,num,dc,nothing,[],0,headless,savefigs,"")
+        new(dc,ph,nothing,nothing,nothing,[],0,headless,savefigs,"")
     end
 end
 
@@ -101,9 +103,7 @@ function dcheadless(gs::MakieGUIState,p,n)
     nothing
 end
 
-# Makie weirdness
-# markersize is in data units (pace Makie docs) so we have to adjust it
-const MARKER_RATIO = Ref(0.03)
+const MY_MARKER_SIZE = 7
 
 ################################################################
 """
@@ -126,9 +126,15 @@ function contourbar!(fig, clines, Z)
     hidexdecorations!(ax2)
     ytmp = collect(range(start=minimum(Z), stop=maximum(Z), length=201))
     ztmp = vcat(ytmp',ytmp')
-    @show extrema(ztmp)
     c = contour!(ax2, [0.0,1.0], ytmp, ztmp; levels=clv, color=clc, linewidth=3.0)
     return c
+end
+
+function updatecb!(c, Z)
+    ytmp = collect(range(start=minimum(Z), stop=maximum(Z), length=201))
+    ztmp = vcat(ytmp',ytmp')
+    c[2] = ytmp
+    c[3] = ztmp
 end
 
 # The main plotting functions
@@ -153,7 +159,6 @@ function redrawcontour(gs::MakieGUIState, ps_data::PSAStruct, opts)
     else
         kwargs = merge(Dict(:levels => levels),opts[:contourkw])
         clines = contour!(ctx,x,y,lgZ; kwargs...)
-        # gs.mainph = quantour(x,y,lgZ, levels; opts[:contourkw]...)
     end
     # Note: Makie 0.21+ claims the colormap is ambiguous if we simply pass clines
     #cbar = Colorbar(fig[1,2]; label="log10(ϵ)", labelpadding=0,
@@ -195,17 +200,22 @@ function surfplot(gs::MakieGUIState, ps_data::PSAStruct, opts)
     zoom = ps_data.zoom_list[ps_data.zoom_pos]
     zoom.computed || return
     nx,ny = size(zoom.Z)
-    # TODO: allow for user options
-    # TODO: control plotting of mesh, e.g.
-    # line_freq = floor(Int,min(nx,ny)/10)
-    # TODO: add cylinders for eigenvalues, like upstream
-    ph = Scene()
-    surface!(ph,zoom.x,zoom.y,-log10.(zoom.Z'))
+    ph = Figure()
+    z = -log10.(zoom.Z')
+    span(a) = - (-)(extrema(a)...)
+    ax = span(zoom.x)
+    ay = span(zoom.y)
+    az = span(z)
+    s = max(ax, ay, az)
+    ax3 = Axis3(ph[1,1], aspect=(ax/s, ay/s, az/s),
+                xlabel="Re(z)", ylabel="Im(z)", zlabel="-log₁₀(ϵ)")
+    surface!(ax3, zoom.x, zoom.y, z)
     drawp(gs,ph,2)
 end
 
 struct ArnoldiPlotterState{T}
-    axis::Scene
+    fig::Figure
+    axis::Axis
     ewsnode::Observable{T}
     shiftsnode::Observable{T}
 end
@@ -241,37 +251,37 @@ function arnoldiplotter!(gs::MakieGUIState,old_ax,opts,dispvec,infostr,
         ewsnode = Observable(Point2f.(real.(ews),imag.(ews)))
         shiftsnode = Observable(Point2f.(real.(shifts),imag.(shifts)))
 
-        ax1 = Scene()
-        ms = MARKER_RATIO[] * (ax[2] - ax[1])
+        fig = Figure()
+        ax1 = Axis(fig[1,1])
+        ms = MY_MARKER_SIZE
         s1 = scatter!(ax1,ewsnode,color=:black,markersize=ms)
-        title(ax1, infostr)
+        if !isempty(infostr)
+            ax1.title[] = infostr
+        end
 
         s2 = scatter!(ax1,shiftsnode,
                       color=:red,marker=:+,markersize=ms,strokewidth=0.1*ms)
         setxylims!(ax1,ax)
-        leg = legend([s1,s2],["ews","shifts"])
-        scene = Scene()
-        vbox(ax1,leg; parent=scene)
+        leg = Legend(fig[1,2], [s1,s2], ["eigvals","shifts"])
 
-        state = ArnoldiPlotterState(ax1, ewsnode, shiftsnode)
-        gs.mainph = scene
+        state = ArnoldiPlotterState(fig, ax1, ewsnode, shiftsnode)
+        gs.mainph = fig
 
         # drawcmd() should force a redraw
         drawp(gs,gs.mainph,1)
     else
         state.ewsnode[] = Point2f.(real.(ews),imag.(ews))
         state.shiftsnode[] = Point2f.(real.(shifts),imag.(shifts))
+        if !isempty(infostr)
+            state.axis.title[] = infostr
+        end
         if update_ax
-            ms = MARKER_RATIO[] * (ax[2] - ax[1])
-            for j in 1:length(state.axis)
-                if state.axis[j] isa Scatter
-                    state.axis[j].attributes[:markersize] = ms
-                end
-            end
             setxylims!(state.axis, ax)
             copy!(old_ax, ax)
         end
     end
+    # yield (we share a thread for now)
+    # also give Makie and the user a chance to process before attempting a redraw
     sleep(0.05)
     return state
 end
@@ -609,13 +619,14 @@ function _portrait(::MakiePlotter,xs,ys,Z,eigA)
     fig = Figure()
     # FIXME: want better level selection than the default
 
-    # FIXME: this should work but currently makes Colorbar unworkable
-    #        and inline text labels are unreadable.
+    # Note:
+    # Naively tried this, but it currently makes Colorbar unworkable
+    #        and inline text labels are unreadable:
     # ax1 = Axis(fig[1,1])
     # c = contour!(ax1,xs,ys,log10.(Z'); labels = true)
     # cbar = Colorbar(fig[1,2], c.colormap[])
 
-    # uglier  workaround
+    # This works but is unsatisfying:
     # ax1, c = contourf(fig[1,1],xs,ys,log10.(Z'))
     # cbar = Colorbar(fig[1,2], c)
 
@@ -625,13 +636,9 @@ function _portrait(::MakiePlotter,xs,ys,Z,eigA)
     c = contour!(ax1,xs,ys,lgZ)
     contourbar!(fig, c, lgZ)
 
-    # ax = getxylims()
-    # ms = MARKER_RATIO[] * (ax[2] - ax[1])
     scatter!(ax1, real(eigA), imag(eigA), color=:black, # label="eigvals",
              )
              # markersize=ms)
-    # fig[1,1] = ax1
-    # fig[1,2] = cbar
     fig
 end
 
@@ -658,10 +665,10 @@ function setxylims!(ph,ax)
     ylims!(ph,(ax[3],ax[4]))
 end
 
-function getxylims(ph)
-    if ph isa Scene
-        sl = scene_limits(ph)
-    else
+function getxylims(ph::Union{Axis, Figure})
+    if ph isa Axis
+        sl = ph.finallimits[]
+    elseif ph isa Figure
         ctx = content(ph[1,1])
         sl = ctx.finallimits[]
     end
@@ -708,7 +715,7 @@ function addmark(gs::MakieGUIState,z,mykey)
     # FIXME: add marker to list (replacing if any)
     # then trigger a redraw that handles everything
     ctx = gs.mainph[1,1]
-    scatter!(ctx,[x],[y],color=ckey,marker=mkey,markersize=7)
+    scatter!(ctx,[x],[y],color=ckey,marker=mkey,markersize=MY_MARKER_SIZE)
     drawp(gs,gs.mainph,1)
     nothing
 end
